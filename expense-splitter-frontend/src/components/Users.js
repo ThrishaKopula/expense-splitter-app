@@ -1,54 +1,44 @@
 // src/components/Users.js
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getUsers, createUser, deleteUser } from "../api/api";
+import { useQuery } from "@tanstack/react-query";
+import { getUsers } from "../api/api";
+import { useState } from "react";
 
 function Users() {
-  const queryClient = useQueryClient();
-
-  // Fetch users
+  const [emailToAdd, setEmailToAdd] = useState("");
   const { data: users = [], error, isLoading } = useQuery({
     queryKey: ["users"],
     queryFn: getUsers,
   });
 
-  // Create user
-  const createMutation = useMutation({
-    mutationFn: createUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
-    },
-  });
-
-  // Delete user
-  const deleteMutation = useMutation({
-    mutationFn: deleteUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
-    },
-  });
+  const handleAddUser = () => {
+    const userExists = users.find((u) => u.email === emailToAdd);
+    if (!userExists) {
+      alert("User with this email does not exist");
+      return;
+    }
+    // Add user to group/friends logic here
+    alert(`Added user: ${userExists.name}`);
+    setEmailToAdd("");
+  };
 
   if (isLoading) return <p>Loading users...</p>;
-  if (error) return <p>Error fetching users: {error.message}</p>;
+  if (error) return <p>Error loading users</p>;
 
   return (
-    <div>
+    <div style={{ padding: "2rem" }}>
       <h2>Users</h2>
-      <button
-        onClick={() =>
-          createMutation.mutate({
-            name: `User ${users.length + 1}`,
-            email: `user${users.length + 1}@test.com`,
-          })
-        }
-      >
-        Add Test User
-      </button>
+      <input
+        type="email"
+        placeholder="Enter user email"
+        value={emailToAdd}
+        onChange={(e) => setEmailToAdd(e.target.value)}
+      />
+      <button onClick={handleAddUser}>Add User</button>
 
       <ul>
         {users.map((u) => (
           <li key={u.id}>
             {u.name} ({u.email})
-            <button onClick={() => deleteMutation.mutate(u.id)}>Delete</button>
           </li>
         ))}
       </ul>

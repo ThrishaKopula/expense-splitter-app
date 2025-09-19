@@ -1,64 +1,46 @@
 // src/components/Groups.js
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getGroups, createGroup, deleteGroup } from "../api/api";
+import { getGroups, createGroup } from "../api/api";
+import { useState } from "react";
 
-function Groups({ onSelectGroup }) {
+function Groups({ currentUser }) {
   const queryClient = useQueryClient();
   const [groupName, setGroupName] = useState("");
-
-  // Fetch groups
-  const { data: groups = [], error, isLoading } = useQuery({
+  const { data: groups = [], isLoading } = useQuery({
     queryKey: ["groups"],
     queryFn: getGroups,
   });
 
-  // Create group
-  const createMutation = useMutation({
+  const mutation = useMutation({
     mutationFn: createGroup,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["groups"] });
-      setGroupName("");
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["groups"] }),
   });
 
-  // Delete group
-  const deleteMutation = useMutation({
-    mutationFn: deleteGroup,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["groups"] });
-    },
-  });
+  const handleCreateGroup = () => {
+    if (!groupName) return;
+    mutation.mutate({
+      name: groupName,
+      userIds: [currentUser.id], // current user is automatically in group
+    });
+    setGroupName("");
+  };
 
   if (isLoading) return <p>Loading groups...</p>;
-  if (error) return <p>Error fetching groups: {error.message}</p>;
 
   return (
-    <div>
+    <div style={{ padding: "2rem" }}>
       <h2>Groups</h2>
-
-      {/* <input
+      <input
         type="text"
-        placeholder="New group name"
+        placeholder="New Group Name"
         value={groupName}
         onChange={(e) => setGroupName(e.target.value)}
       />
-      <button
-        onClick={() => {
-          if (groupName.trim()) {
-            createMutation.mutate({ name: groupName });
-          }
-        }}
-      >
-        Add Group
-      </button> */}
+      <button onClick={handleCreateGroup}>Create Group</button>
 
       <ul>
         {groups.map((g) => (
-          <li key={g.id}>
-            <button onClick={() => onSelectGroup(g)}>{g.name}</button>
-            <button onClick={() => deleteMutation.mutate(g.id)}>Delete</button>
-          </li>
+          <li key={g.id}>{g.name}</li>
         ))}
       </ul>
     </div>
