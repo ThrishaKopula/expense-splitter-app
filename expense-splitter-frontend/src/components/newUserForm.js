@@ -1,78 +1,48 @@
-import React, { useState } from "react";
-import axios from "axios";
+// src/components/NewUserForm.js
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createUser } from "../api/api";
 
-const API_BASE_URL = "http://localhost:8080/api";
-
-const NewUserForm = ({ onUserCreated }) => {
+function NewUserForm() {
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-
-    try {
-      const response = await axios.post(`${API_BASE_URL}/users`, {
-        name,
-        email,
-        password,
-      });
-      console.log("User created:", response.data);
-
-      // Clear form
+  const mutation = useMutation({
+    mutationFn: createUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] }); // refresh users
       setName("");
       setEmail("");
-      setPassword("");
+    },
+  });
 
-      // Notify parent component (optional)
-      if (onUserCreated) onUserCreated(response.data);
-    } catch (err) {
-      console.error("Error creating user:", err);
-      setError(err.response?.data?.message || "Failed to create user");
-    }
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name || !email) return;
+    mutation.mutate({ name, email });
   };
 
   return (
-    <div>
-      <h3>Create New User</h3>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Name:</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-        </div>
-
-        <div>
-          <label>Email:</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-
-        <div>
-          <label>Password:</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-
-        <button type="submit">Create User</button>
-      </form>
-    </div>
+    <form onSubmit={handleSubmit} style={{ marginBottom: "1rem" }}>
+      <h3>Add User</h3>
+      <input
+        type="text"
+        placeholder="Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <button type="submit" disabled={mutation.isPending}>
+        {mutation.isPending ? "Adding..." : "Add User"}
+      </button>
+    </form>
   );
-};
+}
 
 export default NewUserForm;

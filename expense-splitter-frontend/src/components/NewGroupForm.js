@@ -1,58 +1,74 @@
-import React, { useState } from "react";
-import axios from "axios";
-const API_BASE_URL = "http://localhost:8080/api";
+// src/components/NewGroupForm.js
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createGroup, getUsers } from "../api/api";
 
-function NewGroupForm({ users, onGroupCreated }) {
+function NewGroupForm() {
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
-  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [selectedUserIds, setSelectedUserIds] = useState([]); 
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await axios.post(`${API_BASE_URL}/groups`, {
-        name,
-        userIds: selectedUserIds,
-      });
+  // Fetch users directly here
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ["users"],
+    queryFn: getUsers,
+  });
+
+  const mutation = useMutation({
+    mutationFn: createGroup,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["groups"] }); // refresh groups
       setName("");
-      setSelectedUserIds([]);
-      onGroupCreated();
-    } catch (err) {
-      console.error("Error creating group:", err.response?.data || err.message);
-    }
-  };
+      setSelectedUserIds("");
+    },
+  });
 
-  const toggleUser = (userId) => {
+  const handleCheckboxChange = (userId) => {
     setSelectedUserIds((prev) =>
       prev.includes(userId)
-        ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
+        ? prev.filter((id) => id !== userId) // uncheck
+        : [...prev, userId] // check
     );
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name) return;
+    mutation.mutate({
+      name,
+      userIds: selectedUserIds, // send array of selected user IDs
+    });
+  };
+
+  if (isLoading) return <p>Loading users...</p>;
+
   return (
-    <form onSubmit={handleSubmit}>
-      <h3>Create New Group</h3>
+    <form onSubmit={handleSubmit} style={{ marginBottom: "1rem" }}>
+      <h3>Create Group</h3>
       <input
         type="text"
         placeholder="Group Name"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        required
       />
       <div>
-        <h4>Select Users:</h4>
-        {users.map((u) => (
-          <label key={u.id}>
+        <h4>Select Users</h4>
+        {users.map((user) => (
+          <label key={user.id} style={{ display: "block" }}>
             <input
               type="checkbox"
-              checked={selectedUserIds.includes(u.id)}
-              onChange={() => toggleUser(u.id)}
+              value={user.id}
+              checked={selectedUserIds.includes(user.id)}
+              onChange={() => handleCheckboxChange(user.id)}
             />
-            {u.name} ({u.email})
+            {user.name}
           </label>
         ))}
       </div>
-      <button type="submit">Create Group</button>
+
+      <button type="submit" disabled={mutation.isPending}>
+        {mutation.isPending ? "Creating..." : "Create Group"}
+      </button>
     </form>
   );
 }
