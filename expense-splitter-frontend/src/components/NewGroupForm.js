@@ -1,26 +1,32 @@
 import React, { useState } from "react";
 import axios from "axios";
+const API_BASE_URL = "http://localhost:8080/api";
 
-function NewGroupForm({ onGroupCreated }) {
+function NewGroupForm({ users, onGroupCreated }) {
   const [name, setName] = useState("");
-  const [userIds, setUserIds] = useState(""); // comma-separated
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
-      const payload = {
+      await axios.post(`${API_BASE_URL}/groups`, {
         name,
-        userIds: userIds.split(",").map((id) => parseInt(id.trim(), 10)),
-      };
-
-      const res = await axios.post("http://localhost:8080/api/groups", payload);
-      onGroupCreated(res.data);
+        userIds: selectedUserIds,
+      });
       setName("");
-      setUserIds("");
+      setSelectedUserIds([]);
+      onGroupCreated();
     } catch (err) {
       console.error("Error creating group:", err.response?.data || err.message);
     }
+  };
+
+  const toggleUser = (userId) => {
+    setSelectedUserIds((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
   };
 
   return (
@@ -28,18 +34,24 @@ function NewGroupForm({ onGroupCreated }) {
       <h3>Create New Group</h3>
       <input
         type="text"
-        placeholder="Group name"
+        placeholder="Group Name"
         value={name}
         onChange={(e) => setName(e.target.value)}
         required
       />
-      <input
-        type="text"
-        placeholder="User IDs (comma separated)"
-        value={userIds}
-        onChange={(e) => setUserIds(e.target.value)}
-        required
-      />
+      <div>
+        <h4>Select Users:</h4>
+        {users.map((u) => (
+          <label key={u.id}>
+            <input
+              type="checkbox"
+              checked={selectedUserIds.includes(u.id)}
+              onChange={() => toggleUser(u.id)}
+            />
+            {u.name} ({u.email})
+          </label>
+        ))}
+      </div>
       <button type="submit">Create Group</button>
     </form>
   );

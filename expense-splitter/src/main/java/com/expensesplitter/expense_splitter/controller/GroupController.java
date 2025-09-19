@@ -156,6 +156,19 @@ public class GroupController {
         return expenseRepository.save(expense);
     }
 
+    // DELETE a group
+    @DeleteMapping("/groups/{id}")
+    public void deleteGroup(@PathVariable Long id) {
+        groupRepository.deleteById(id);
+    }
+
+    // DELETE an expense
+    @DeleteMapping("/expenses/{id}")
+    public void deleteExpense(@PathVariable Long id) {
+        expenseRepository.deleteById(id);
+    }
+
+
     // -------------------- DTO CLASSES --------------------
 
     public static class GroupDTO {
