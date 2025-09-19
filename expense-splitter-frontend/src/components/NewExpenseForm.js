@@ -1,62 +1,67 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8080/api";
-
-function NewExpenseForm({ onExpenseCreated }) {
+function NewExpenseForm({ groupId, onExpenseCreated }) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [groups, setGroups] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [groupId, setGroupId] = useState("");
   const [paidByUserId, setPaidByUserId] = useState("");
+  const [date, setDate] = useState("");
 
-  useEffect(() => {
-    axios.get(`${API_BASE_URL}/groups`).then(res => setGroups(res.data));
-    axios.get(`${API_BASE_URL}/users`).then(res => setUsers(res.data));
-  }, []);
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    axios.post(`${API_BASE_URL}/expenses`, {
-      description,
-      amount: parseFloat(amount),
-      groupId,
-      paidByUserId
-    })
-      .then(res => {
-        alert("Expense created!");
-        onExpenseCreated(res.data);
-        setDescription(""); setAmount(""); setGroupId(""); setPaidByUserId("");
-      })
-      .catch(err => console.error(err));
+
+    try {
+      const payload = {
+        description,
+        amount: parseFloat(amount),
+        date: date ? new Date(date).toISOString() : new Date().toISOString(),
+        paidByUserId: parseInt(paidByUserId, 10),
+      };
+
+      const res = await axios.post(
+        `http://localhost:8080/api/groups/${groupId}/expenses`,
+        payload
+      );
+      onExpenseCreated(res.data);
+
+      setDescription("");
+      setAmount("");
+      setPaidByUserId("");
+      setDate("");
+    } catch (err) {
+      console.error("Error creating expense:", err.response?.data || err.message);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      <h3>Create Expense</h3>
+      <h3>Add Expense</h3>
       <input
         type="text"
         placeholder="Description"
         value={description}
-        onChange={e => setDescription(e.target.value)}
+        onChange={(e) => setDescription(e.target.value)}
         required
       />
       <input
         type="number"
         placeholder="Amount"
         value={amount}
-        onChange={e => setAmount(e.target.value)}
+        onChange={(e) => setAmount(e.target.value)}
         required
       />
-      <select value={groupId} onChange={e => setGroupId(e.target.value)} required>
-        <option value="">Select Group</option>
-        {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-      </select>
-      <select value={paidByUserId} onChange={e => setPaidByUserId(e.target.value)} required>
-        <option value="">Paid by</option>
-        {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-      </select>
+      <input
+        type="number"
+        placeholder="Paid by User ID"
+        value={paidByUserId}
+        onChange={(e) => setPaidByUserId(e.target.value)}
+        required
+      />
+      <input
+        type="datetime-local"
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+      />
       <button type="submit">Add Expense</button>
     </form>
   );

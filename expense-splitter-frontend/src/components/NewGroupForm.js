@@ -1,60 +1,45 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
-
-const API_BASE_URL = "http://localhost:8080/api";
 
 function NewGroupForm({ onGroupCreated }) {
   const [name, setName] = useState("");
-  const [users, setUsers] = useState([]);
-  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [userIds, setUserIds] = useState(""); // comma-separated
 
-  useEffect(() => {
-    // fetch all users
-    axios.get(`${API_BASE_URL}/users`)
-      .then(res => setUsers(res.data))
-      .catch(err => console.error(err));
-  }, []);
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    axios.post(`${API_BASE_URL}/groups`, { name, userIds: selectedUserIds })
-      .then(res => {
-        alert("Group created!");
-        onGroupCreated(res.data);
-        setName(""); setSelectedUserIds([]);
-      })
-      .catch(err => console.error(err));
-  };
 
-  const toggleUser = (id) => {
-    setSelectedUserIds(prev =>
-      prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
-    );
+    try {
+      const payload = {
+        name,
+        userIds: userIds.split(",").map((id) => parseInt(id.trim(), 10)),
+      };
+
+      const res = await axios.post("http://localhost:8080/api/groups", payload);
+      onGroupCreated(res.data);
+      setName("");
+      setUserIds("");
+    } catch (err) {
+      console.error("Error creating group:", err.response?.data || err.message);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      <h3>Create Group</h3>
+      <h3>Create New Group</h3>
       <input
         type="text"
-        placeholder="Group Name"
+        placeholder="Group name"
         value={name}
-        onChange={e => setName(e.target.value)}
+        onChange={(e) => setName(e.target.value)}
         required
       />
-      <div>
-        {users.map(user => (
-          <label key={user.id}>
-            <input
-              type="checkbox"
-              value={user.id}
-              checked={selectedUserIds.includes(user.id)}
-              onChange={() => toggleUser(user.id)}
-            />
-            {user.name}
-          </label>
-        ))}
-      </div>
+      <input
+        type="text"
+        placeholder="User IDs (comma separated)"
+        value={userIds}
+        onChange={(e) => setUserIds(e.target.value)}
+        required
+      />
       <button type="submit">Create Group</button>
     </form>
   );

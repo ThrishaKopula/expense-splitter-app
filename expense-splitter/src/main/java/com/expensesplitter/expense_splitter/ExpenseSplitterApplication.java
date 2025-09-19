@@ -98,6 +98,5 @@ public class ExpenseSplitterApplication {
 			System.out.println("Expenses checked/created successfully.");
 		};
 	}
-
 }
 
