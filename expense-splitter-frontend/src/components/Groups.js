@@ -1,63 +1,21 @@
-import React, { useEffect, useState } from "react";
-import { getGroups, getGroupExpenses, getGroupBalances, getGroupSettle } from "../api/api";
-import Expenses from "./Expenses";
-import Balances from "./Balances";
+import React from "react";
+import NewGroupForm from "./NewGroupForm";
 
-function Groups() {
-  const [groups, setGroups] = useState([]);
-  const [selectedGroup, setSelectedGroup] = useState(null);
-  const [expenses, setExpenses] = useState([]);
-  const [balances, setBalances] = useState([]);
-
-  useEffect(() => {
-    getGroups()
-      .then(res => setGroups(res.data))
-      .catch(err => console.error(err));
-  }, []);
-
-  const handleSelectGroup = (group) => {
-    setSelectedGroup(group);
-
-    // Fetch expenses
-    getGroupExpenses(group.id)
-      .then(res => setExpenses(res.data))
-      .catch(err => console.error(err));
-
-    // Fetch balances
-    getGroupBalances(group.id)
-      .then(res => setBalances(res.data))
-      .catch(err => console.error(err));
-  };
-
-  const handleSettle = () => {
-    if (!selectedGroup) return;
-    getGroupSettle(selectedGroup.id)
-      .then(res => {
-        setBalances(res.data);
-        alert("Settled!");
-      })
-      .catch(err => console.error(err));
-  };
-
+function Groups({ groups, users, onSelectGroup, onDeleteGroup, onGroupCreated }) {
   return (
     <div>
       <h2>Groups</h2>
+      <NewGroupForm users={users} onGroupCreated={onGroupCreated} />
       <ul>
-        {groups.map(g => (
-          <li key={g.id} onClick={() => handleSelectGroup(g)} style={{ cursor: "pointer" }}>
-            {g.name}
+        {groups.map((group) => (
+          <li key={group.id}>
+            <button onClick={() => onSelectGroup(group)}>{group.name}</button>
+            <button onClick={() => onDeleteGroup(group.id)} style={{ marginLeft: "1rem" }}>
+              Delete
+            </button>
           </li>
         ))}
       </ul>
-
-      {selectedGroup && (
-        <div>
-          <h3>{selectedGroup.name}</h3>
-          <Expenses expenses={expenses} />
-          <Balances balances={balances} />
-          <button onClick={handleSettle}>Settle</button>
-        </div>
-      )}
     </div>
   );
 }

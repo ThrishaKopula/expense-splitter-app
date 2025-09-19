@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
-import NewGroupForm from "./components/NewGroupForm";
-import NewExpenseForm from "./components/NewExpenseForm";
-import NewUserForm from "./components/newUserForm";
-
-const API_BASE_URL = "http://localhost:8080/api";
+import {
+  getGroups,
+  getUsers,
+  getExpenses,
+  deleteGroup,
+  deleteUser,
+  deleteExpense,
+} from "./api/api";
+import Users from "./components/Users";
+import Groups from "./components/Groups";
+import Expenses from "./components/Expenses";
 
 function App() {
   const [groups, setGroups] = useState([]);
@@ -12,10 +17,10 @@ function App() {
   const [expenses, setExpenses] = useState([]);
   const [users, setUsers] = useState([]);
 
-  // -------------------- FETCH FUNCTIONS --------------------
+  // -------------------- FETCH --------------------
   const fetchGroups = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/groups`);
+      const res = await getGroups();
       setGroups(res.data);
     } catch (err) {
       console.error("Error fetching groups:", err.response?.data || err.message);
@@ -24,7 +29,7 @@ function App() {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/users`);
+      const res = await getUsers();
       setUsers(res.data);
     } catch (err) {
       console.error("Error fetching users:", err.response?.data || err.message);
@@ -33,17 +38,17 @@ function App() {
 
   const fetchExpenses = async (groupId) => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/groups/${groupId}/expenses`);
+      const res = await getExpenses(groupId);
       setExpenses(res.data);
     } catch (err) {
       console.error("Error fetching expenses:", err.response?.data || err.message);
     }
   };
 
-  // -------------------- DELETE FUNCTIONS --------------------
+  // -------------------- DELETE --------------------
   const handleDeleteGroup = async (groupId) => {
     try {
-      await axios.delete(`${API_BASE_URL}/groups/${groupId}`);
+      await deleteGroup(groupId);
       fetchGroups();
       if (selectedGroup?.id === groupId) setSelectedGroup(null);
     } catch (err) {
@@ -53,7 +58,7 @@ function App() {
 
   const handleDeleteUser = async (userId) => {
     try {
-      await axios.delete(`${API_BASE_URL}/users/${userId}`);
+      await deleteUser(userId);
       fetchUsers();
     } catch (err) {
       console.error("Error deleting user:", err.response?.data || err.message);
@@ -62,7 +67,7 @@ function App() {
 
   const handleDeleteExpense = async (expenseId) => {
     try {
-      await axios.delete(`${API_BASE_URL}/expenses/${expenseId}`);
+      await deleteExpense(expenseId);
       fetchExpenses(selectedGroup.id);
     } catch (err) {
       console.error("Error deleting expense:", err.response?.data || err.message);
@@ -84,65 +89,22 @@ function App() {
     <div style={{ padding: "2rem" }}>
       <h1>Expense Splitter</h1>
 
-      {/* CREATE NEW USER */}
-      <NewUserForm onUserCreated={fetchUsers} />
-      {/* USERS LIST */}
-      <h2>Users</h2>
-      <ul>
-        {users.map((user) => (
-          <li key={user.id}>
-            {user.name} ({user.email})
-            <button onClick={() => handleDeleteUser(user.id)} style={{ marginLeft: "1rem" }}>
-              Delete
-            </button>
-          </li>
-        ))}
-      </ul>
+      <Users users={users} onDeleteUser={handleDeleteUser} onUserCreated={fetchUsers} />
 
-      {/* CREATE NEW GROUP */}
-      <NewGroupForm users={users} onGroupCreated={fetchGroups} />
+      <Groups
+        groups={groups}
+        users={users}
+        onSelectGroup={setSelectedGroup}
+        onDeleteGroup={handleDeleteGroup}
+        onGroupCreated={fetchGroups}
+      />
 
-      
-
-      {/* GROUPS LIST */}
-      <h2>Groups</h2>
-      <ul>
-        {groups.map((group) => (
-          <li key={group.id}>
-            <button onClick={() => setSelectedGroup(group)}>{group.name}</button>
-            <button onClick={() => handleDeleteGroup(group.id)} style={{ marginLeft: "1rem" }}>
-              Delete
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      {/* SELECTED GROUP EXPENSES */}
-      {selectedGroup && (
-        <div style={{ marginTop: "2rem" }}>
-          <h2>Group: {selectedGroup.name}</h2>
-
-          <NewExpenseForm
-            groupId={selectedGroup.id}
-            onExpenseCreated={() => fetchExpenses(selectedGroup.id)}
-          />
-
-          <h3>Expenses</h3>
-          <ul>
-            {expenses.map((exp) => (
-              <li key={exp.id}>
-                {exp.description} — ${exp.amount} (Paid by {exp.paidBy?.name || "Unknown"})
-                <button
-                  onClick={() => handleDeleteExpense(exp.id)}
-                  style={{ marginLeft: "1rem" }}
-                >
-                  Delete
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <Expenses
+        group={selectedGroup}
+        expenses={expenses}
+        onExpenseCreated={() => fetchExpenses(selectedGroup.id)}
+        onDeleteExpense={handleDeleteExpense}
+      />
     </div>
   );
 }
