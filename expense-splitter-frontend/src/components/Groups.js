@@ -1,48 +1,55 @@
 // src/components/Groups.js
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getGroups, createGroup } from "../api/api";
+import { getGroups, createGroup, deleteGroup } from "../api/api";
 import { useState } from "react";
 
-function Groups({ currentUser }) {
+function Groups() {
   const queryClient = useQueryClient();
-  const [groupName, setGroupName] = useState("");
+  const [name, setName] = useState("");
+
   const { data: groups = [], isLoading } = useQuery({
     queryKey: ["groups"],
     queryFn: getGroups,
   });
 
-  const mutation = useMutation({
+  const createMutation = useMutation({
     mutationFn: createGroup,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["groups"] }),
   });
 
-  const handleCreateGroup = () => {
-    if (!groupName) return;
-    mutation.mutate({
-      name: groupName,
-      userIds: [currentUser.id], // current user is automatically in group
-    });
-    setGroupName("");
-  };
+  const deleteMutation = useMutation({
+    mutationFn: deleteGroup,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["groups"] }),
+  });
 
   if (isLoading) return <p>Loading groups...</p>;
 
   return (
-    <div style={{ padding: "2rem" }}>
-      <h2>Groups</h2>
-      <input
-        type="text"
-        placeholder="New Group Name"
-        value={groupName}
-        onChange={(e) => setGroupName(e.target.value)}
-      />
-      <button onClick={handleCreateGroup}>Create Group</button>
+    <div className="container">
+      <div className="card">
+        <h2>Create Group</h2>
+        <input
+          type="text"
+          placeholder="Group Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <button onClick={() => createMutation.mutate({ name, userIds: [] })}>
+          Create Group
+        </button>
+      </div>
 
-      <ul>
-        {groups.map((g) => (
-          <li key={g.id}>{g.name}</li>
-        ))}
-      </ul>
+      <div className="card">
+        <h2>Groups</h2>
+        <ul>
+          {groups.map((g) => (
+            <li key={g.id}>
+              <span>{g.name}</span>
+              <button onClick={() => deleteMutation.mutate(g.id)}>Delete</button>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

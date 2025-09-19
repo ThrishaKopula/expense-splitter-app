@@ -2,44 +2,41 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+
 import Login from "./components/Login";
 import Signup from "./components/Signup";
 import Dashboard from "./components/Dashboard";
-import Users from "./components/Users";
-import Groups from "./components/Groups";
+import UsersPage from "./components/UsersPage";
+import GroupsPage from "./components/GroupsPage";
 
 const queryClient = new QueryClient();
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
 
+  if (!currentUser) {
+    // Redirect to login/signup if no user
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login setCurrentUser={setCurrentUser} />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="*" element={<Navigate to="/login" />} />
+          </Routes>
+        </Router>
+      </QueryClientProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
         <Routes>
-          <Route
-            path="/"
-            element={<Navigate to={currentUser ? "/dashboard" : "/login"} />}
-          />
-          <Route
-            path="/login"
-            element={<Login setCurrentUser={setCurrentUser} />}
-          />
-          <Route path="/signup" element={<Signup />} />
-          <Route
-            path="/dashboard"
-            element={
-              currentUser ? <Dashboard currentUser={currentUser} /> : <Navigate to="/login" />
-            }
-          />
-          <Route
-            path="/users"
-            element={currentUser ? <Users /> : <Navigate to="/login" />}
-          />
-          <Route
-            path="/groups"
-            element={currentUser ? <Groups currentUser={currentUser} /> : <Navigate to="/login" />}
-          />
+          <Route path="/dashboard" element={<Dashboard currentUser={currentUser} />} />
+          <Route path="/users" element={<UsersPage />} />
+          <Route path="/groups" element={<GroupsPage />} />
+          <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
       </Router>
     </QueryClientProvider>
