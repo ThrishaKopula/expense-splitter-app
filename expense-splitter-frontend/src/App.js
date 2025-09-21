@@ -32,7 +32,7 @@ function App() {
           path="/dashboard"
           element={
             <ProtectedRoute user={currentUser}>
-              <Dashboard user={currentUser} />
+              <Dashboard user={currentUser} setCurrentUser={setCurrentUser}/>
             </ProtectedRoute>
           }
         />
