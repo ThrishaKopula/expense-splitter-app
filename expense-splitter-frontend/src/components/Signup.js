@@ -1,31 +1,36 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { signupUser } from "../api/api";
 
-function Signup({ onSignup }) {
+function Signup({ setCurrentUser }) {
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
-    if (!email) return alert("Please enter your email");
-
-    // 🔥 simulate signup (replace with real DB check)
-    onSignup(email);
-    navigate("/dashboard");
+    try {
+      const user = await signupUser({ name, email, password });
+      setCurrentUser(user);
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.response?.data?.message || "Email already exists");
+    }
   };
 
   return (
     <div className="centered-page">
       <div className="auth-card">
         <h2>Sign Up</h2>
-        <form onSubmit={handleSubmit}>
+        {error && <p style={{ color: "red" }}>{error}</p>}
+        <form onSubmit={handleSignup}>
           <input
             type="text"
             placeholder="Enter your username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
           />
           <input
             type="email"
@@ -41,6 +46,8 @@ function Signup({ onSignup }) {
           />
           <button type="submit">Sign Up</button>
         </form>
+          
+        
         <div className="switch-link">
           Already have an account? <Link to="/login">Login</Link>
         </div>

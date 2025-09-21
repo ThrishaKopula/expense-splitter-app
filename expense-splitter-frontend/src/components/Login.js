@@ -1,34 +1,47 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { loginUser } from "../api/api";
 
-function Login({ onLogin }) {
+function Login({ setCurrentUser }) {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (!email) return alert("Please enter your email");
-
-    // 🔥 simulate login (replace with real DB check)
-    onLogin(email);
-    navigate("/dashboard");
+    try {
+      const user = await loginUser({ email, password });
+      setCurrentUser(user); 
+      console.log(user);
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.response?.data?.message || "Email not found frontend");
+    }
   };
 
   return (
     <div className="centered-page">
       <div className="auth-card">
         <h2>Login</h2>
-        <form onSubmit={handleSubmit}>
+        {error && <p style={{ color: "red" }}>{error}</p>}
+        <form onSubmit={handleLogin}>
           <input
             type="email"
             placeholder="Enter your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+          <input
+            type="password"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
           <button type="submit">Login</button>
         </form>
         <div className="switch-link">
-          Don’t have an account? <Link to="/signup">Sign up</Link>
+          Don't have an account? <span onClick={() => navigate("/signup")} style={{color:'blue', cursor:'pointer'}}>Sign Up</span>
         </div>
       </div>
     </div>

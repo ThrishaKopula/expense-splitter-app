@@ -1,15 +1,18 @@
 // src/components/Dashboard.js
 import { useNavigate } from "react-router-dom";
 
-function Dashboard({ currentUser }) {
+function Dashboard({ user }) {
   const navigate = useNavigate();
+  if (!user) {
+    return <p>Loading user data...</p>; // or redirect to login
+  }
 
   return (
     <div className="container">
-      <h1>Welcome, {currentUser.name}</h1>
+      <h1>Welcome, {user.name}</h1>
       <div className="card">
         <h2>Balance</h2>
-        <p>${currentUser.balance || 0}</p>
+        <p>${user.balance || 0}</p>
       </div>
 
       <div className="header-buttons">

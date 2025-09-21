@@ -20,15 +20,40 @@ public class UserController {
         return userRepository.findAll();
     }
 
-    // POST create new user
-    @PostMapping("/users")
-    public User createUser(@RequestBody UserDTO dto) {
+    @PostMapping("/signup")
+    public User signup(@RequestBody UserDTO dto) {
+        if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already exists in DB");
+        }
+
         User user = new User();
         user.setName(dto.getName());
         user.setEmail(dto.getEmail());
-        user.setPassword(dto.getPassword()); // For demo purposes, store plain text (resume project)
+        user.setPassword(dto.getPassword());
         return userRepository.save(user);
     }
+
+    @PostMapping("/login")
+    public User login(@RequestBody LoginDTO dto) {
+        User user = userRepository.findByEmail(dto.getEmail())
+                .orElseThrow(() -> new RuntimeException("Email not found in DB"));
+
+        if (!user.getPassword().equals(dto.getPassword())) {
+            throw new RuntimeException("Invalid password");
+        }
+        return user;
+    }
+
+
+//    // POST create new user
+//    @PostMapping("/users")
+//    public User createUser(@RequestBody UserDTO dto) {
+//        User user = new User();
+//        user.setName(dto.getName());
+//        user.setEmail(dto.getEmail());
+//        user.setPassword(dto.getPassword()); // For demo purposes, store plain text (resume project)
+//        return userRepository.save(user);
+//    }
 
     // DELETE a user
     @DeleteMapping("/users/{id}")
@@ -54,5 +79,19 @@ public class UserController {
 
         public String getPassword() { return password; }
         public void setPassword(String password) { this.password = password; }
+
+
     }
+
+    public static class LoginDTO {
+        private String email;
+        private String password; // add this
+
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+    }
+
 }
