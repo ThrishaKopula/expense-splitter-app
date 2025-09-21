@@ -1,54 +1,50 @@
-// src/components/Signup.js
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { getUsers, createUser } from "../api/api";
 
-function Signup() {
-  const navigate = useNavigate();
-  const [name, setName] = useState("");
+function Signup({ onSignup }) {
   const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const navigate = useNavigate();
 
-  const handleSignup = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setError("");
+    if (!email) return alert("Please enter your email");
 
-    try {
-      const users = await getUsers();
-      if (users.some((u) => u.email === email)) {
-        setError("Email already registered. Please login.");
-        return;
-      }
-
-      await createUser({ name, email });
-      navigate("/login");
-    } catch {
-      setError("Signup failed. Try again later.");
-    }
+    // 🔥 simulate signup (replace with real DB check)
+    onSignup(email);
+    navigate("/dashboard");
   };
 
   return (
-    <div style={{ padding: "2rem" }}>
-      <h2>Sign Up</h2>
-      <form onSubmit={handleSignup}>
-        <input
-          type="text"
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        {error && <p style={{ color: "red" }}>{error}</p>}
-        <button type="submit">Sign Up</button>
-      </form>
-      <p>
-        Already have an account? <Link to="/login">Login</Link>
-      </p>
+    <div className="centered-page">
+      <div className="auth-card">
+        <h2>Sign Up</h2>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="Enter your username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <input
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button type="submit">Sign Up</button>
+        </form>
+        <div className="switch-link">
+          Already have an account? <Link to="/login">Login</Link>
+        </div>
+      </div>
     </div>
   );
 }

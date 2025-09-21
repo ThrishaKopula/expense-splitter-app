@@ -1,49 +1,36 @@
-// src/components/Login.js
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { getUsers } from "../api/api";
 
-function Login({ setCurrentUser }) {
-  const navigate = useNavigate();
+function Login({ onLogin }) {
   const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setError("");
+    if (!email) return alert("Please enter your email");
 
-    try {
-      const users = await getUsers();
-      const user = users.find((u) => u.email === email);
-
-      if (!user) {
-        setError("Email not registered. Please sign up first.");
-        return;
-      }
-
-      setCurrentUser(user);
-      navigate("/dashboard");
-    } catch {
-      setError("Login failed. Try again later.");
-    }
+    // 🔥 simulate login (replace with real DB check)
+    onLogin(email);
+    navigate("/dashboard");
   };
 
   return (
-    <div style={{ padding: "2rem" }}>
-      <h2>Login</h2>
-      <form onSubmit={handleLogin}>
-        <input
-          type="email"
-          placeholder="Enter your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        {error && <p style={{ color: "red" }}>{error}</p>}
-        <button type="submit">Login</button>
-      </form>
-      <p>
-        Don't have an account? <Link to="/signup">Sign Up</Link>
-      </p>
+    <div className="centered-page">
+      <div className="auth-card">
+        <h2>Login</h2>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <button type="submit">Login</button>
+        </form>
+        <div className="switch-link">
+          Don’t have an account? <Link to="/signup">Sign up</Link>
+        </div>
+      </div>
     </div>
   );
 }
