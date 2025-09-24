@@ -1,6 +1,5 @@
 package com.expensesplitter.expense_splitter.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -16,26 +15,20 @@ public class Expense {
     private String description;
     private BigDecimal amount;
     private LocalDateTime date;
+    private String category; // AI-generated category
 
     @ManyToOne
-    @JoinColumn(name = "paid_by_user_id")
-    private User paidBy;
-
-    @ManyToOne
-    @JoinColumn(name = "group_id")
-    @JsonBackReference // <-- Prevent infinite loop when serializing Group
-    private Group group;
-
-
+    @JoinColumn(name = "user_id")
+    private User user;
 
     public Expense() {}
 
-    public Expense(String description, BigDecimal amount, LocalDateTime date, User paidBy, Group group) {
+    public Expense(String description, BigDecimal amount, LocalDateTime date, User user, String category) {
         this.description = description;
         this.amount = amount;
         this.date = date;
-        this.paidBy = paidBy;
-        this.group = group;
+        this.user = user;
+        this.category = category;
     }
 
     // Getters & Setters
@@ -51,9 +44,9 @@ public class Expense {
     public LocalDateTime getDate() { return date; }
     public void setDate(LocalDateTime date) { this.date = date; }
 
-    public User getPaidBy() { return paidBy; }
-    public void setPaidBy(User paidBy) { this.paidBy = paidBy; }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
 
-    public Group getGroup() { return group; }
-    public void setGroup(Group group) { this.group = group; }
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
 }

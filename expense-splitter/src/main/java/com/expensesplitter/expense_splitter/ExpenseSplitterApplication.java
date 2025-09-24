@@ -1,21 +1,17 @@
 package com.expensesplitter.expense_splitter;
 
 import com.expensesplitter.expense_splitter.entity.User;
-import com.expensesplitter.expense_splitter.entity.Group;
 import com.expensesplitter.expense_splitter.entity.Expense;
 import com.expensesplitter.expense_splitter.repository.UserRepository;
-import com.expensesplitter.expense_splitter.repository.GroupRepository;
 import com.expensesplitter.expense_splitter.repository.ExpenseRepository;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @SpringBootApplication
 public class ExpenseSplitterApplication {
@@ -24,15 +20,11 @@ public class ExpenseSplitterApplication {
 		SpringApplication.run(ExpenseSplitterApplication.class, args);
 	}
 
+	// ✅ Seed demo data at startup
 	@Bean
-	CommandLineRunner initializeData(
-			UserRepository userRepository,
-			GroupRepository groupRepository,
-			ExpenseRepository expenseRepository
-	) {
+	CommandLineRunner initializeData(UserRepository userRepository, ExpenseRepository expenseRepository) {
 		return args -> {
-
-			// 1️⃣ Create users if they don’t exist
+			// Create demo users if they don’t exist
 			User alice = userRepository.findByEmail("alice@example.com")
 					.orElseGet(() -> userRepository.save(
 							new User("Alice", "alice@example.com", "password123")
@@ -43,60 +35,35 @@ public class ExpenseSplitterApplication {
 							new User("Bob", "bob@example.com", "password456")
 					));
 
-			User charlie = userRepository.findByEmail("charlie@example.com")
-					.orElseGet(() -> userRepository.save(
-							new User("Charlie", "charlie@example.com", "password789")
-					));
+			// Create demo expenses if none exist
+			List<Expense> expenses = expenseRepository.findAll();
+			if (expenses.isEmpty()) {
+				expenseRepository.save(new Expense(
+						"Groceries",
+						new BigDecimal("120.50"),
+						LocalDateTime.now(),
+						alice,
+						"food"
+				));
 
-			// 2️⃣ Create group if it doesn’t exist and add users
-			Group roommates = groupRepository.findByName("Roommates")
-					.orElseGet(() -> {
-						Group g = new Group("Roommates");
-						g.addUser(alice);
-						g.addUser(bob);
-						g.addUser(charlie);
-						return groupRepository.save(g);
-					});
+				expenseRepository.save(new Expense(
+						"Electricity Bill",
+						new BigDecimal("80.00"),
+						LocalDateTime.now(),
+						alice,
+						"bills"
+				));
 
-			System.out.println("Group saved: " + roommates.getName() +
-					" with users: " + roommates.getUsers().size());
+				expenseRepository.save(new Expense(
+						"Netflix Subscription",
+						new BigDecimal("15.99"),
+						LocalDateTime.now(),
+						bob,
+						"subscriptions"
+				));
+			}
 
-			// 3️⃣ Add multiple expenses if they don’t exist
-			expenseRepository.findByDescriptionAndGroup("Groceries", roommates)
-					.orElseGet(() -> expenseRepository.save(
-							new Expense(
-									"Groceries",
-									new BigDecimal("90.00"),
-									LocalDateTime.now(),
-									alice,
-									roommates
-							)
-					));
-
-			expenseRepository.findByDescriptionAndGroup("Utilities", roommates)
-					.orElseGet(() -> expenseRepository.save(
-							new Expense(
-									"Utilities",
-									new BigDecimal("150.00"),
-									LocalDateTime.now(),
-									bob,
-									roommates
-							)
-					));
-
-			expenseRepository.findByDescriptionAndGroup("Internet", roommates)
-					.orElseGet(() -> expenseRepository.save(
-							new Expense(
-									"Internet",
-									new BigDecimal("60.00"),
-									LocalDateTime.now(),
-									charlie,
-									roommates
-							)
-					));
-
-			System.out.println("Expenses checked/created successfully.");
+			System.out.println("✅ Users and expenses initialized successfully.");
 		};
 	}
 }
-
