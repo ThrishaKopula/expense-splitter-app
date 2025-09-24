@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getExpenses, createExpense, deleteExpense } from "../api/api";
+import { useNavigate } from "react-router-dom";
 
-function Dashboard({ user, onLogout }) {
+function Dashboard({ user, setCurrentUser }) {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
   const [description, setDescription] = useState("");
@@ -34,6 +36,12 @@ function Dashboard({ user, onLogout }) {
     if (!description || !amount) return;
     addMutation.mutate({ description, amount: parseFloat(amount), category: null });
   };
+
+  const onLogout = () => {
+    setCurrentUser(null);        // clear state
+    localStorage.removeItem("currentUser"); // clear persisted user
+    navigate("/login");  
+  }
 
   if (!user) return <p>Loading user...</p>;
   if (isLoading) return <p>Loading expenses...</p>;
