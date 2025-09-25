@@ -38,6 +38,19 @@ const CATEGORY_COLOR_MAP = EXPENSE_CATEGORIES.reduce((map, category, index) => {
   return map;
 }, {});
 
+const getCurrentDateTimeString = () => {
+    const now = new Date();
+    // Get date part (YYYY-MM-DD)
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    // Get time part (HH:MM)
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 function Dashboard({ user, setCurrentUser }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -45,6 +58,7 @@ function Dashboard({ user, setCurrentUser }) {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState(EXPENSE_CATEGORIES[8]);
   const [amount, setAmount] = useState("");
+  const [transactionDateTime, setTransactionDateTime] = useState(getCurrentDateTimeString()); 
 
   const { data: expenses = [], isLoading } = useQuery({
     queryKey: ["expenses", user?.id],
@@ -59,6 +73,7 @@ function Dashboard({ user, setCurrentUser }) {
       setDescription("");
       setAmount("");
       setCategory(EXPENSE_CATEGORIES[8]); 
+      setTransactionDateTime(getCurrentDateTimeString()); // Reset date to current day
       setShowAddForm(false);
     },
   });
@@ -70,8 +85,13 @@ function Dashboard({ user, setCurrentUser }) {
 
   const handleAddExpense = (e) => {
     e.preventDefault();
-    if (!description || !amount) return;
-    addMutation.mutate({ description, amount: parseFloat(amount), category: category });
+    if (!category || !amount) return;
+    addMutation.mutate({ 
+        description: description || null, 
+        amount: parseFloat(amount), 
+        category: category,
+        date: transactionDateTime // Send the date string (YYYY-MM-DD)
+    });
   };
 
   const onLogout = () => {
@@ -119,12 +139,12 @@ function Dashboard({ user, setCurrentUser }) {
     new Date(b.date) - new Date(a.date) 
   );
 
-  const groupedExpenses = expenses.reduce((acc, exp) => {
-    const cat = exp.category || "Other";
-    if (!acc[cat]) acc = { ...acc, [cat]: [] }; // Use spread operator for better immutability
-    acc[cat].push(exp);
-    return acc;
-  }, {});
+  // const groupedExpenses = expenses.reduce((acc, exp) => {
+  //   const cat = exp.category || "Other";
+  //   if (!acc[cat]) acc = { ...acc, [cat]: [] }; // Use spread operator for better immutability
+  //   acc[cat].push(exp);
+  //   return acc;
+  // }, {});
 
   if (!user) return <p>Loading user...</p>;
   if (isLoading) return <p>Loading expenses...</p>;
@@ -185,6 +205,12 @@ function Dashboard({ user, setCurrentUser }) {
       {showAddForm && (
         <div className="dashboard-card">
           <form onSubmit={handleAddExpense}>
+            <input
+                type="datetime-local"
+                value={transactionDateTime}
+                onChange={(e) => setTransactionDateTime(e.target.value)}
+                required
+            />
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -260,7 +286,7 @@ function Dashboard({ user, setCurrentUser }) {
       </div>
       {/* --- END NEW PIE CHART CARD --- */}
 
-      {/* UPDATED TRANSACTION HISTORY (Flat List by Date/Time) */}
+      {/* UPDATED TRANSACTION HISTORY */}
       <div className="dashboard-card">
         <h3>Transaction History</h3>
         {sortedTransactions.length === 0 ? (
@@ -290,14 +316,20 @@ function Dashboard({ user, setCurrentUser }) {
                     }}
                   ></div>
                   
-                  {/* Description, Category, Date/Time */}
+                  {/* Category Name (Primary display) & Optional Description */}
                   <div style={{ lineHeight: '1.2' }}>
                     <span style={{ fontWeight: 600 }}>
-                      {exp.description || `[${exp.category}]`}
+                      {/* 2. Display Category Name as the main title */}
+                      {exp.category}
                     </span>
                     <br />
-                    <span style={{ fontSize: '0.85rem', color: '#666' }}>
-                      {/* Using the 'date' field from your Spring Boot backend */}
+                    <span style={{ fontSize: '0.85rem', color: exp.description ? '#666' : '#999' }}>
+                      {/* 3. Display Description below, or a fallback if empty */}
+                      {exp.description || `(No Description)`}
+                    </span>
+                    <br />
+                    <span style={{ fontSize: '0.8rem', color: '#999' }}>
+                      {/* Displays the date/time */}
                       {exp.date ? new Date(exp.date).toLocaleString() : 'N/A Date'}
                     </span>
                   </div>
@@ -333,7 +365,7 @@ function Dashboard({ user, setCurrentUser }) {
           </ul>
         )}
       </div>
-      {/* END UPDATED TRANSACTION HISTORY */}
+      {/* END TRANSACTION HISTORY */}
 
     </div>
   );
