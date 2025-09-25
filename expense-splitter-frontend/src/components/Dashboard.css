@@ -41,3 +41,23 @@
 .dashboard-card button:hover {
   background-color: #4eacff;
 }
+
+.dashboard-card select {
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  /* Ensure the select box takes up the full width */
+  width: 100%; 
+  /* Optionally, you might want a matching font */
+  font-size: 1rem; 
+  /* Removes the default system appearance for better cross-browser consistency */
+  -webkit-appearance: none; 
+  -moz-appearance: none;
+  appearance: none;
+  /* Add a little extra room for a custom arrow or just for breathing room */
+  padding-right: 2.5rem; 
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="%23333" d="M7 10l5 5 5-5z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.25rem;
+}
