@@ -2,6 +2,10 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getExpenses, createExpense, deleteExpense } from "../api/api";
 import { useNavigate } from "react-router-dom";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faRightFromBracket, faPlus, faBan } from '@fortawesome/free-solid-svg-icons';
+
+import "./Dashboard.css";
 
 function Dashboard({ user, setCurrentUser }) {
   const navigate = useNavigate();
@@ -43,62 +47,113 @@ function Dashboard({ user, setCurrentUser }) {
     navigate("/login");  
   }
 
+  const totalBalance = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+
   if (!user) return <p>Loading user...</p>;
   if (isLoading) return <p>Loading expenses...</p>;
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
+    <div style={{ padding: "2rem" }}>
+      {/* Welcome + Logout */}
+      <div className="dashboard-card" style={{ position: "relative" }}>
         <h2>Welcome, {user.name}</h2>
-        <button onClick={onLogout} style={{ padding: "0.5rem 1rem"}}>Logout</button>
+        <h3 style={{ color: totalBalance < 0 ? 'red' : 'green' }}>
+            Balance: ${totalBalance.toFixed(2)}
+        </h3>
+        <button
+          onClick={onLogout}
+          style={{
+            position: "absolute",
+            top: "1rem",
+            right: "1rem",
+            color: "white",
+            backgroundColor: "#4eacff",
+            border: "none",
+            padding: "0.5rem 1rem",
+            borderRadius: "5px",
+            cursor: "pointer",
+          }}
+        >
+          Logout <FontAwesomeIcon icon={faRightFromBracket} />
+          
+        </button>
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          style={{
+            marginTop: "1rem",
+            padding: "0.5rem 1rem",
+            backgroundColor: showAddForm ? "darkred" : "green",
+            color: "white",
+            border: "none",
+            borderRadius: "5px",
+            cursor: "pointer",
+          }}
+        >
+          <FontAwesomeIcon icon={showAddForm ? faBan : faPlus} />
+          {showAddForm ? " Cancel" : " Add Expense"}
+        </button>
       </div>
 
-      <button
-        onClick={() => setShowAddForm(!showAddForm)}
-        style={{ marginBottom: "1rem", padding: "0.5rem 1rem", backgroundColor: "green" }}
-      >
-        {showAddForm ? "Cancel" : "Add Expense"}
-      </button>
-
+      {/* Add Expense Form */}
       {showAddForm && (
-        <form onSubmit={handleAddExpense} style={{ marginBottom: "1rem" }}>
-          <input
-            type="text"
-            placeholder="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            style={{ display: "block", width: "100%", marginBottom: "0.5rem", padding: "0.5rem" }}
-          />
-          <input
-            type="number"
-            placeholder="Amount"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            style={{ display: "block", width: "100%", marginBottom: "0.5rem", padding: "0.5rem" }}
-          />
-          <button type="submit" style={{ padding: "0.5rem 1rem" }}>
-            {addMutation.isPending ? "Adding..." : "Add Expense"}
-          </button>
-        </form>
+        <div className="dashboard-card">
+          <form onSubmit={handleAddExpense}>
+            <input
+              type="text"
+              placeholder="Description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <input
+              type="number"
+              placeholder="Amount"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+            <button type="submit">
+              {addMutation.isPending ? "Adding..." : "Add Expense"}
+            </button>
+          </form>
+        </div>
       )}
 
-      <h3>Your Expenses</h3>
-      {expenses.length === 0 ? (
-        <p>No expenses yet.</p>
-      ) : (
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {expenses.map((exp) => (
-            <li key={exp.id} style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid #ccc" }}>
-              <span>{exp.description} - ${exp.amount.toFixed(2)}</span>
-              <button 
-              style={{ backgroundColor: "red", color: "white", border: "none", padding: "0.5rem 1rem", borderRadius: "4px" }}
-              onClick={() => deleteMutation.mutate(exp.id)}>
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* Expenses List */}
+      <div className="dashboard-card">
+        <h3>Your Expenses</h3>
+        {expenses.length === 0 ? (
+          <p>No expenses yet.</p>
+        ) : (
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {expenses.map((exp) => (
+              <li
+                key={exp.id}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "0.5rem 0",
+                  borderBottom: "1px solid #eee",
+                }}
+              >
+                <span>
+                  {exp.description} - ${exp.amount.toFixed(2)}
+                </span>
+                <button
+                  style={{
+                    backgroundColor: "red",
+                    color: "white",
+                    border: "none",
+                    padding: "0.5rem 1rem",
+                    borderRadius: "4px",
+                  }}
+                  onClick={() => deleteMutation.mutate(exp.id)}
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
