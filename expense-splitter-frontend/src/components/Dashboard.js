@@ -115,6 +115,10 @@ function Dashboard({ user, setCurrentUser }) {
   }));
   // --- End Financial Calculations ---
 
+  const sortedTransactions = [...expenses].sort((a, b) => 
+    new Date(b.date) - new Date(a.date) 
+  );
+
   const groupedExpenses = expenses.reduce((acc, exp) => {
     const cat = exp.category || "Other";
     if (!acc[cat]) acc = { ...acc, [cat]: [] }; // Use spread operator for better immutability
@@ -256,48 +260,80 @@ function Dashboard({ user, setCurrentUser }) {
       </div>
       {/* --- END NEW PIE CHART CARD --- */}
 
-      {/* Expenses List */}
+      {/* UPDATED TRANSACTION HISTORY (Flat List by Date/Time) */}
       <div className="dashboard-card">
-        <h3>Your Expenses</h3>
-        {expenses.length === 0 ? (
-          <p>No expenses yet.</p>
+        <h3>Transaction History</h3>
+        {sortedTransactions.length === 0 ? (
+          <p>No transactions yet.</p>
         ) : (
-          Object.entries(groupedExpenses).map(([cat, exps]) => (
-            <div key={cat.toUpperCase} style={{ marginBottom: "1rem" }}>
-              <h4 style={{ borderBottom: "1px solid #ccc" }}>{cat}</h4>
-              <ul style={{ listStyle: "none", padding: 0 }}>
-                {exps.map((exp) => (
-                  <li
-                    key={exp.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      padding: "0.5rem 0",
-                      borderBottom: "1px solid #eee",
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {sortedTransactions.map((exp) => (
+              <li
+                key={exp.id}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "0.75rem 0",
+                  borderBottom: "1px solid #eee",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  {/* Color Square */}
+                  <div 
+                    style={{ 
+                      width: '12px', 
+                      height: '12px', 
+                      backgroundColor: CATEGORY_COLOR_MAP[exp.category || "Other"],
+                      borderRadius: '3px',
+                      flexShrink: 0
                     }}
-                  >
-                    <span>
-                      {exp.description} - ${exp.amount.toFixed(2)}
+                  ></div>
+                  
+                  {/* Description, Category, Date/Time */}
+                  <div style={{ lineHeight: '1.2' }}>
+                    <span style={{ fontWeight: 600 }}>
+                      {exp.description || `[${exp.category}]`}
                     </span>
+                    <br />
+                    <span style={{ fontSize: '0.85rem', color: '#666' }}>
+                      {/* Using the 'date' field from your Spring Boot backend */}
+                      {exp.date ? new Date(exp.date).toLocaleString() : 'N/A Date'}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+                    {/* Amount */}
+                    <span style={{ 
+                        fontWeight: 600,
+                        color: exp.category === "Income" ? 'green' : 'red' 
+                    }}>
+                        {exp.category === "Income" ? '+' : '-'} ${Math.abs(exp.amount).toFixed(2)}
+                    </span>
+                    
+                    {/* Delete Button */}
                     <button
-                      style={{
-                        backgroundColor: "red",
-                        color: "white",
-                        border: "none",
-                        padding: "0.5rem 1rem",
-                        borderRadius: "4px",
-                      }}
-                      onClick={() => deleteMutation.mutate(exp.id)}
+                        style={{
+                            backgroundColor: "#ef476f",
+                            color: "white",
+                            border: "none",
+                            padding: "0.5rem 1rem",
+                            borderRadius: "4px",
+                            cursor: 'pointer'
+                        }}
+                        onClick={() => deleteMutation.mutate(exp.id)}
+                        disabled={deleteMutation.isPending}
                     >
-                      Delete
+                        Delete
                     </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
+      {/* END UPDATED TRANSACTION HISTORY */}
 
     </div>
   );
