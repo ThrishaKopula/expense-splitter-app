@@ -74,8 +74,10 @@ function Dashboard({ user, setCurrentUser }) {
   const [startIndex, setStartIndex] = useState(0); 
 
   const [editingExpense, setEditingExpense] = useState(null); 
-  // NEW STATE: Control visibility of the edit modal
   const [isModalOpen, setIsModalOpen] = useState(false); 
+  
+  // NEW STATE: Tracks whether to show only income or only expense categories
+  const [categoryFilter, setCategoryFilter] = useState('ALL'); 
 
   const { data: expenses = [], isLoading } = useQuery({
     queryKey: ["expenses", user?.id],
@@ -83,7 +85,7 @@ function Dashboard({ user, setCurrentUser }) {
     enabled: !!user,
   });
 
-  // --- MUTATIONS ---
+  // --- MUTATIONS (Same) ---
   const addMutation = useMutation({
     mutationFn: (newExpense) => createExpense(user.id, newExpense),
     onSuccess: () => {
@@ -94,6 +96,7 @@ function Dashboard({ user, setCurrentUser }) {
       setTransactionDateTime(getCurrentDateTimeString());
       setShowAddForm(false);
       setStartIndex(0); 
+      setCategoryFilter('ALL'); // Reset filter on success
     },
   });
 
@@ -109,19 +112,46 @@ function Dashboard({ user, setCurrentUser }) {
     mutationFn: ({ id, updatedExpense }) => updateExpense(id, updatedExpense),
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["expenses", user.id] });
-        setIsModalOpen(false); // Close modal on success
-        setEditingExpense(null); // Clear editing state
+        setIsModalOpen(false);
+        setEditingExpense(null);
     },
   });
   // --- END MUTATIONS ---
 
-  const handleToggleAddForm = () => {
+  // Helper to filter categories based on the current action (Income/Expense)
+  const getFilteredCategories = () => {
+    if (categoryFilter === 'INCOME') {
+      return EXPENSE_CATEGORIES.filter(cat => cat === 'Income');
+    }
+    if (categoryFilter === 'EXPENSE') {
+      return EXPENSE_CATEGORIES.filter(cat => cat !== 'Income');
+    }
+    return EXPENSE_CATEGORIES;
+  };
+
+  const handleToggleAddForm = (filter = 'ALL') => {
+    // If the form is currently closed, set the date/time and filter
     if (!showAddForm) {
       setTransactionDateTime(getCurrentDateTimeString());
+      setCategoryFilter(filter);
+      
+      // Set the default category based on the filter before showing the form
+      if (filter === 'INCOME') {
+        setCategory('Income');
+      } else if (filter === 'EXPENSE') {
+        // Find the first non-Income category, default to 'Other'
+        const defaultExpenseCat = EXPENSE_CATEGORIES.find(cat => cat !== 'Income') || 'Other';
+        setCategory(defaultExpenseCat);
+      } else {
+        setCategory(EXPENSE_CATEGORIES[8]);
+      }
+    } else {
+        setCategoryFilter('ALL'); // Clear filter if canceling
     }
+
     setShowAddForm(!showAddForm);
-    setEditingExpense(null); // Cancel any ongoing edits
-    setIsModalOpen(false); // Close modal if adding
+    setEditingExpense(null);
+    setIsModalOpen(false);
   };
 
   const handleAddExpense = (e) => {
@@ -136,7 +166,7 @@ function Dashboard({ user, setCurrentUser }) {
     });
   };
 
-  // HANDLER: Starts the edit process (opens modal)
+  // ... (startEdit, updateEditingField, handleUpdate, cancelEdit, onLogout, calculations remain the same)
   const startEdit = (expense) => {
     setEditingExpense({
       id: expense.id,
@@ -145,11 +175,10 @@ function Dashboard({ user, setCurrentUser }) {
       category: expense.category,
       date: formatApiDateForInput(expense.date), 
     });
-    setShowAddForm(false); // Hide the main add form
-    setIsModalOpen(true); // Open the modal
+    setShowAddForm(false);
+    setIsModalOpen(true);
   };
 
-  // Helper function to update a single property in the editingExpense state
   const updateEditingField = (field, value) => {
     setEditingExpense(prev => ({
         ...prev,
@@ -157,7 +186,6 @@ function Dashboard({ user, setCurrentUser }) {
     }));
   };
 
-  // HANDLER: Submits the updated expense
   const handleUpdate = (e) => {
     e.preventDefault();
     if (!editingExpense.amount) return;
@@ -168,14 +196,14 @@ function Dashboard({ user, setCurrentUser }) {
         description: editingExpense.description || null,
         amount: parseFloat(editingExpense.amount),
         category: editingExpense.category,
-        date: editingExpense.date, // Send the updated date/time string
+        date: editingExpense.date,
       }
     });
   };
 
   const cancelEdit = () => {
     setEditingExpense(null);
-    setIsModalOpen(false); // Close the modal
+    setIsModalOpen(false);
   };
 
   const onLogout = () => {
@@ -244,20 +272,10 @@ function Dashboard({ user, setCurrentUser }) {
 
   return (
     <div style={{ padding: "2rem" }}>
-      {/* Welcome + Logout (Same) */}
+      {/* 1. Welcome + Logout Card */}
       <div className="dashboard-card" style={{ position: "relative" }}>
         <h2>Welcome, {user.name}</h2>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-          <h3 style={{ color: totalBalance < 0 ? 'darkred' : 'darkgreen', margin: 0 }}>
-              Balance: ${totalBalance.toFixed(2)}
-          </h3>
-          <h3 style={{ color: 'green', margin: 0 }}>
-              Income: ${totalIncome.toFixed(2)}
-          </h3>
-          <h3 style={{ color: 'red', margin: 0 }}>
-              Expense: ${totalExpense.toFixed(2)}
-          </h3>
-        </div>
+        
         <button
           onClick={onLogout}
           style={{
@@ -274,24 +292,99 @@ function Dashboard({ user, setCurrentUser }) {
         >
           Logout <FontAwesomeIcon icon={faRightFromBracket} />
         </button>
-        <button
-          onClick={handleToggleAddForm}
-          style={{
-            marginTop: "1rem",
-            padding: "0.5rem 1rem",
-            backgroundColor: showAddForm ? "darkred" : "green",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-          }}
-        >
-          <FontAwesomeIcon icon={showAddForm ? faBan : faPlus} />
-          {showAddForm ? " Cancel" : " Add Transaction"}
-        </button>
+        {/* Removed generic "Add Transaction" button here, relying on the summary card actions */}
       </div>
 
-      {/* Add Expense Form (Same) */}
+      {/* 2. COMBINED FINANCIAL SUMMARY & ACTIONS CARD (Full Width Row) */}
+      <div 
+        className="dashboard-card" 
+        style={{ 
+          backgroundImage: 'linear-gradient(135deg, #355070 0%, #6d597a 100%)', 
+          color: 'white',
+          padding: '1.5rem',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between'
+        }}
+      >
+        {/* TOP ROW: Balance and Detailed Figures */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center' }}>
+          
+          {/* Balance Column */}
+          <div style={{ textAlign: 'start' }}>
+            <p style={{ fontSize: '1rem', color: 'white', margin: '0 0 5px 0', fontWeight: 500 }}>
+              Current Balance
+            </p>
+            <span 
+              style={{ 
+                fontSize: '2.5rem', 
+                fontWeight: 700, 
+                color: totalBalance < 0 ? '#ffcccc' : 'white'
+              }}
+            >
+              ${totalBalance.toFixed(2)}
+            </span>
+          </div>
+          
+          {/* Income/Expense Mini-Columns */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '1rem' }}>
+            <div style={{ textAlign: 'end' }}>
+              <span style={{ color: 'white', fontWeight: 500}}>Income:</span>
+              <span style={{ marginLeft: '8px', fontWeight: 500, fontSize: '1.3rem' }}>${totalIncome.toFixed(2)}</span>
+            </div>
+            <div style={{ textAlign: 'end' }}>
+              <span style={{ color: 'white', fontWeight: 500 }}>Expense:</span>
+              <span style={{ marginLeft: '8px', fontWeight: 500, fontSize: '1.3rem' }}>${totalExpense.toFixed(2)}</span>
+            </div>
+          </div>
+
+        </div>
+        {/* END TOP ROW */}
+        
+        {/* BOTTOM ROW: Action Buttons - Call handleToggleAddForm with filter */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          gap: '10px', 
+          paddingTop: '1rem',
+        }}>
+          <button 
+            onClick={() => handleToggleAddForm('INCOME')}
+            style={{ 
+              flex: 1, 
+              backgroundColor: '#06d6a0', 
+              color: 'white', 
+              fontSize: '1rem',
+              padding: '1rem 0.5rem',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <FontAwesomeIcon icon={faPlus} /> Add Income
+          </button>
+          
+          <button 
+            onClick={() => handleToggleAddForm('EXPENSE')}
+            style={{ 
+              flex: 1, 
+              backgroundColor: '#ef476f', 
+              color: 'white', 
+              fontSize: '1rem',
+              padding: '1rem 0.5rem',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <FontAwesomeIcon icon={faPlus} /> Add Expense
+          </button>
+        </div>
+        {/* END BOTTOM ROW */}
+      </div>
+      {/* END COMBINED FINANCIAL SUMMARY & ACTIONS CARD */}
+
+      {/* 3. Add Expense Form - Displayed under the Summary Card */}
       {showAddForm && (
         <div className="dashboard-card">
           <form onSubmit={handleAddExpense}>
@@ -302,23 +395,19 @@ function Dashboard({ user, setCurrentUser }) {
                 required
             />
             
+            {/* Filtered Category Select */}
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               required 
             >
-              {EXPENSE_CATEGORIES.map((cat) => (
+              {getFilteredCategories().map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
                 </option>
               ))}
             </select>
-            <input
-              type="text"
-              placeholder="Description (Optional)"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+            
             
             <input
               type="number"
@@ -327,15 +416,30 @@ function Dashboard({ user, setCurrentUser }) {
               onChange={(e) => setAmount(e.target.value)}
               required
             />
+            <input
+              type="text"
+              placeholder="Description (Optional)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
             <button type="submit" disabled={addMutation.isPending}>
               {addMutation.isPending ? "Adding..." : "Add Transaction"}
+            </button>
+            <button type="button" onClick={() => handleToggleAddForm('ALL')} style={{backgroundColor: '#4eacff'}}>
+                <FontAwesomeIcon icon={faBan} /> Cancel
             </button>
           </form>
         </div>
       )}
+      {/* END Add Expense Form */}
 
-      {/* Pie Chart Card (Same) */}
-      <div className="dashboard-card">
+      {/* 4. PIE CHART CARD (Full Width Row) */}
+      <div 
+        className="dashboard-card"
+        style={{ 
+          margin: '1.5rem auto'
+        }}
+      >
         <h3>Expense Breakdown</h3>
         {totalExpense === 0 ? (
           <p>Add expenses to see the breakdown chart.</p>
@@ -374,8 +478,9 @@ function Dashboard({ user, setCurrentUser }) {
           </ResponsiveContainer>
         )}
       </div>
+      {/* END PIE CHART CARD */}
 
-      {/* TRANSACTION HISTORY (Updated to call startEdit) */}
+      {/* TRANSACTION HISTORY (Same) */}
       <div className="dashboard-card">
         <h3>Transaction History</h3>
         {sortedTransactions.length === 0 ? (
@@ -427,7 +532,7 @@ function Dashboard({ user, setCurrentUser }) {
                             {exp.category === "Income" ? '+' : '-'} ${Math.abs(exp.amount).toFixed(2)}
                         </span>
                         
-                        {/* Edit Button - Calls startEdit */}
+                        {/* Edit Button */}
                         <button
                             onClick={() => startEdit(exp)}
                             style={{
@@ -493,18 +598,18 @@ function Dashboard({ user, setCurrentUser }) {
         )}
       </div>
 
-      {/* --- NEW EDIT MODAL POP-UP --- */}
+      {/* EDIT MODAL POP-UP (Same) */}
       {isModalOpen && editingExpense && (
         <div 
-          style={{ // Modal Overlay Style
+          style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.5)', 
             display: 'flex', justifyContent: 'center', alignItems: 'center',
-            zIndex: 1000 // Ensure it's on top of everything
+            zIndex: 1000
           }}
         >
           <div 
-            className="dashboard-card" // Reuse dashboard-card styling
+            className="dashboard-card"
             style={{ 
               maxWidth: '450px', 
               padding: '2rem', 
@@ -514,7 +619,6 @@ function Dashboard({ user, setCurrentUser }) {
           >
             <h3 style={{marginBottom: '1.5rem'}}>Edit Transaction</h3>
             
-            {/* Close Button */}
             <button 
                 onClick={cancelEdit} 
                 style={{ 
@@ -539,6 +643,7 @@ function Dashboard({ user, setCurrentUser }) {
                     onChange={(e) => updateEditingField('category', e.target.value)}
                     required
                 >
+                    {/* The edit modal needs ALL categories available */}
                     {EXPENSE_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>{cat}</option>
                     ))}
@@ -567,7 +672,6 @@ function Dashboard({ user, setCurrentUser }) {
           </div>
         </div>
       )}
-      {/* --- END NEW EDIT MODAL POP-UP --- */}
     </div>
   );
 }
