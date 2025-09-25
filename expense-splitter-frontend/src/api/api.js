@@ -13,5 +13,8 @@ export const getExpenses = async (userId) =>
 export const createExpense = async (userId, expense) =>
   (await axios.post(`${API_BASE_URL}/expenses/${userId}`, expense)).data;
 
+export const updateExpense = async (id, updatedExpense) =>
+  (await axios.put(`${API_BASE_URL}/expenses/${id}`, updatedExpense)).data;
+
 export const deleteExpense = async (id) =>
   await axios.delete(`${API_BASE_URL}/expenses/${id}`);

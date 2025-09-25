@@ -47,6 +47,40 @@ public class ExpenseController {
         return expenseRepository.save(expense);
     }
 
+    // 🌟 NEW: Update Expense Endpoint 🌟
+    @PutMapping("/{id}")
+    public Expense updateExpense(@PathVariable Long id, @RequestBody ExpenseDTO dto) {
+        // 1. Find the existing expense by ID
+        Expense existingExpense = expenseRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Expense not found with ID: " + id));
+
+        // 2. Update all editable fields from the DTO
+
+        // Update description: The DTO description can be null or a string.
+        // We update the entity field directly.
+        existingExpense.setDescription(dto.getDescription());
+
+        // Update amount: BigDecimal must be non-null.
+        if (dto.getAmount() != null) {
+            existingExpense.setAmount(dto.getAmount());
+        }
+
+        // Update date: LocalDateTime must be non-null.
+        // The frontend always sends a date, but we ensure it's not null before updating.
+        if (dto.getDate() != null) {
+            existingExpense.setDate(dto.getDate());
+        }
+
+        // Update category: The frontend always sends a category.
+        existingExpense.setCategory(dto.getCategory());
+
+        // We do NOT update the User ID, as this expense still belongs to the same user.
+
+        // 3. Save the updated entity back to the database
+        return expenseRepository.save(existingExpense);
+    }
+    // 🌟 END NEW 🌟
+
     // Delete expense
     @DeleteMapping("/{id}")
     public void deleteExpense(@PathVariable Long id) {
