@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { useState, useEffect } from "react";
 import Login from "./components/Login";
 import Signup from "./components/Signup";
-import Dashboard from "./components/Dashboard";
+import Dashboard from "./components/Dashboard/index";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
