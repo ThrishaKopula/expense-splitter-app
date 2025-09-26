@@ -32,13 +32,15 @@ const COLORS_LIST = [
   '#073b4c', // Other
 ];
 
-// Create the Category-to-Color Map
+const FILTER_PERIODS = ['ALL TIME', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'];
+
+// Create the Category-to-Color Map (Same)
 const CATEGORY_COLOR_MAP = EXPENSE_CATEGORIES.reduce((map, category, index) => {
   map[category] = COLORS_LIST[index % COLORS_LIST.length];
   return map;
 }, {});
 
-// Helper function to format date/time for input[datetime-local]
+// Helper function to format date/time for input[datetime-local] (Same)
 const getCurrentDateTimeString = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -50,7 +52,7 @@ const getCurrentDateTimeString = () => {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
-// Helper to format API date string to YYYY-MM-DDTHH:MM for input[datetime-local]
+// Helper to format API date string to YYYY-MM-DDTHH:MM for input[datetime-local] (Same)
 const formatApiDateForInput = (dateString) => {
     if (!dateString) return getCurrentDateTimeString();
     try {
@@ -60,8 +62,98 @@ const formatApiDateForInput = (dateString) => {
     }
 };
 
+// Helper to format date to YYYY-MM-DD string (Same)
+const getTodayDateOnlyString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+// 🌟 NEW/UPDATED: Generate fixed periods 🌟
+const generateFixedYears = (startYear = 2010) => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let year = currentYear; year >= startYear; year--) {
+        years.push(year.toString());
+    }
+    return years;
+};
+
+const generateFixedMonths = () => {
+    return Array.from({ length: 12 }, (item, i) => {
+        const monthIndex = i+1;
+        return {
+            value: String(monthIndex).padStart(2, '0'), // 01, 02, ..., 12
+            label: new Date(2000, i, 1).toLocaleDateString('en-US', { month: 'long' }), // January, February, ...
+        };
+    });
+};
+
+const FIXED_YEARS = generateFixedYears();
+const FIXED_MONTHS = generateFixedMonths();
+// 🌟 END NEW/UPDATED 🌟
+
+
+// In Dashboard.jsx
+
+const filterTransactionsByPeriod = (transactions, period, selectedDate) => {
+  if (period === 'ALL TIME') return transactions;
+
+  // Manual parsing to avoid timezone shift (Parses as LOCAL midnight, not UTC)
+  const parts = selectedDate.split('-').map(Number);
+  const filterTime = new Date(parts[0], parts[1] - 1, parts[2]); // Year, Month (0-indexed), Day
+  
+  if (isNaN(filterTime.getTime())) return transactions;
+  
+  let startTime;
+  let endTime;
+
+  switch (period) {
+    case 'DAILY':
+        startTime = new Date(filterTime);
+        startTime.setHours(0, 0, 0, 0); // Already local midnight due to manual parsing
+        endTime = new Date(startTime);
+        endTime.setDate(startTime.getDate() + 1);
+        break;
+    case 'WEEKLY':
+        // Calculate start of the week relative to the parsed local date
+        const day = filterTime.getDay(); // 0 is Sunday
+        startTime = new Date(filterTime);
+        startTime.setDate(filterTime.getDate() - day);
+        startTime.setHours(0, 0, 0, 0);
+        endTime = new Date(startTime);
+        endTime.setDate(startTime.getDate() + 7);
+        break;
+    case 'MONTHLY':
+        // Anchoring to the 1st day avoids month rollover issues
+        startTime = new Date(filterTime.getFullYear(), filterTime.getMonth(), 1);
+        endTime = new Date(filterTime.getFullYear(), filterTime.getMonth() + 1, 1);
+        break;
+    case 'YEARLY':
+        startTime = new Date(filterTime.getFullYear(), 0, 1);
+        endTime = new Date(filterTime.getFullYear() + 1, 0, 1);
+        break;
+    default:
+      return transactions;
+  }
+  
+  const startTimeMs = startTime.getTime();
+  const endTimeMs = endTime.getTime();
+
+  return transactions.filter(exp => {
+    // Note: This relies on the transaction date string having timezone info or being correctly stored.
+    const expDateMs = new Date(exp.date).getTime();
+    return expDateMs >= startTimeMs && expDateMs < endTimeMs;
+  });
+};
 
 const ITEMS_PER_PAGE = 5; 
+
+// -------------------------------------------------------------
+// Component Start
+// -------------------------------------------------------------
 
 function Dashboard({ user, setCurrentUser }) {
   const navigate = useNavigate();
@@ -75,9 +167,11 @@ function Dashboard({ user, setCurrentUser }) {
 
   const [editingExpense, setEditingExpense] = useState(null); 
   const [isModalOpen, setIsModalOpen] = useState(false); 
-  
-  // NEW STATE: Tracks whether to show only income or only expense categories
   const [categoryFilter, setCategoryFilter] = useState('ALL'); 
+  
+  const [filterPeriod, setFilterPeriod] = useState('MONTHLY'); 
+  // Initial selectedDate state should be a valid YYYY-MM-DD string
+  const [selectedDate, setSelectedDate] = useState(getTodayDateOnlyString()); 
 
   const { data: expenses = [], isLoading } = useQuery({
     queryKey: ["expenses", user?.id],
@@ -96,7 +190,7 @@ function Dashboard({ user, setCurrentUser }) {
       setTransactionDateTime(getCurrentDateTimeString());
       setShowAddForm(false);
       setStartIndex(0); 
-      setCategoryFilter('ALL'); // Reset filter on success
+      setCategoryFilter('ALL'); 
     },
   });
 
@@ -118,7 +212,6 @@ function Dashboard({ user, setCurrentUser }) {
   });
   // --- END MUTATIONS ---
 
-  // Helper to filter categories based on the current action (Income/Expense)
   const getFilteredCategories = () => {
     if (categoryFilter === 'INCOME') {
       return EXPENSE_CATEGORIES.filter(cat => cat === 'Income');
@@ -130,23 +223,20 @@ function Dashboard({ user, setCurrentUser }) {
   };
 
   const handleToggleAddForm = (filter = 'ALL') => {
-    // If the form is currently closed, set the date/time and filter
     if (!showAddForm) {
       setTransactionDateTime(getCurrentDateTimeString());
       setCategoryFilter(filter);
       
-      // Set the default category based on the filter before showing the form
       if (filter === 'INCOME') {
         setCategory('Income');
       } else if (filter === 'EXPENSE') {
-        // Find the first non-Income category, default to 'Other'
         const defaultExpenseCat = EXPENSE_CATEGORIES.find(cat => cat !== 'Income') || 'Other';
         setCategory(defaultExpenseCat);
       } else {
         setCategory(EXPENSE_CATEGORIES[8]);
       }
     } else {
-        setCategoryFilter('ALL'); // Clear filter if canceling
+        setCategoryFilter('ALL');
     }
 
     setShowAddForm(!showAddForm);
@@ -166,7 +256,6 @@ function Dashboard({ user, setCurrentUser }) {
     });
   };
 
-  // ... (startEdit, updateEditingField, handleUpdate, cancelEdit, onLogout, calculations remain the same)
   const startEdit = (expense) => {
     setEditingExpense({
       id: expense.id,
@@ -212,15 +301,146 @@ function Dashboard({ user, setCurrentUser }) {
     navigate("/login");  
   }
 
-  // --- Financial Calculations (Same) ---
-  const totalIncome = expenses.reduce((sum, expense) => {
+  // In Dashboard.jsx
+
+// Determine the relevant date/time for display purposes
+const getDisplayTime = () => {
+    // 🌟 FIX: Parse the selectedDate string as a local date (YYYY-MM-DD).
+    const parts = selectedDate.split('-').map(Number);
+    // Create a new date anchored locally (prevents UTC conversion errors)
+    const d = new Date(parts[0], parts[1] - 1, parts[2]); 
+    
+    if (isNaN(d.getTime())) return `${filterPeriod} (Invalid Date)`;
+
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    
+    switch (filterPeriod) {
+        case 'DAILY':
+            // Simply format the date, which is now correctly anchored
+            return d.toLocaleDateString('en-US', options);
+        case 'WEEKLY':
+            // Calculation remains correct, but is anchored to the correct local date (d)
+            const startOfWeek = new Date(d);
+            startOfWeek.setDate(d.getDate() - d.getDay());
+            
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            
+            return `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+        case 'MONTHLY':
+            // Only need month and year
+            return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+        case 'YEARLY':
+            // Only need year
+            return d.toLocaleDateString('en-US', { year: 'numeric' });
+        default:
+            return 'All Time';
+    }
+};
+
+
+  // In Dashboard.jsx
+
+// In Dashboard.jsx
+
+// --- DYNAMIC NAVIGATION HANDLERS ---
+const handleTimeBlockChange = (direction) => {
+    // 1. Parse the current date *correctly* to avoid UTC shift
+    const parts = selectedDate.split('-').map(Number);
+    const currentDate = new Date(parts[0], parts[1] - 1, parts[2]); // Anchored locally to midnight
+
+    // Use +/- 1 for direction
+    const amount = direction === 'PREV' ? -1 : 1; 
+    
+    switch (filterPeriod) {
+        case 'DAILY':
+            // FIX: Change the date by exactly 1 day
+            currentDate.setDate(currentDate.getDate() + amount);
+            break;
+        case 'WEEKLY':
+            // FIX: Change the date by exactly 7 days
+            currentDate.setDate(currentDate.getDate() + (amount * 7));
+            break;
+        case 'MONTHLY':
+            // Changes the month
+            currentDate.setMonth(currentDate.getMonth() + amount);
+            break;
+        case 'YEARLY':
+            // Changes the year
+            currentDate.setFullYear(currentDate.getFullYear() + amount);
+            break;
+        default:
+            return;
+    }
+    
+    // 2. Format the new date back to YYYY-MM-DD string
+    const newYear = currentDate.getFullYear();
+    const newMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const newDay = String(currentDate.getDate()).padStart(2, '0');
+    
+    setSelectedDate(`${newYear}-${newMonth}-${newDay}`);
+    setStartIndex(0); // Reset pagination
+};
+// --- END DYNAMIC NAVIGATION HANDLERS ---
+  
+
+// In Dashboard.jsx
+
+// HANDLER: Update selected date based on Month/Year dropdown change
+const handleDropdownDateChange = (type, value) => {
+    // 1. Create a NEW Date object based on the current selected date string
+    const parts = selectedDate.split('-').map(Number);
+    let d = new Date(parts[0], parts[1] - 1, parts[2]); 
+    
+    let newDate;
+    if (type === 'MONTH') {
+        // When setting the month, we explicitly keep the current year
+        const newMonthIndex = parseInt(value, 10) - 1;
+        
+        // 🌟 FIX 1: Set the month, and then re-anchor the day to 1 to prevent rollover (e.g., from March 31st to February 1st)
+        d.setDate(1); 
+        d.setMonth(newMonthIndex);
+        newDate = d;
+
+    } else if (type === 'YEAR') {
+        // 🌟 FIX 2: When setting the year, explicitly keep the current month and day.
+        const newYear = parseInt(value, 10);
+        
+        // Create a new date object anchored to the 1st day of the current month
+        d = new Date(d.getFullYear(), d.getMonth(), 1); 
+        d.setFullYear(newYear);
+        newDate = d;
+
+    } else {
+        return;
+    }
+
+    // 2. Format the new date back to YYYY-MM-DD string
+    const finalDate = new Date(newDate);
+    const newYearStr = finalDate.getFullYear();
+    const newMonthStr = String(finalDate.getMonth() + 1).padStart(2, '0');
+    // Ensure the day is always '01' for Month/Year filters to keep the anchor consistent
+    const newDayStr = '01'; 
+
+    setSelectedDate(`${newYearStr}-${newMonthStr}-${newDayStr}`);
+    setStartIndex(0);
+};
+  // --- END DYNAMIC NAVIGATION HANDLERS ---
+
+
+  // --- FILTERED TRANSACTIONS ---
+  const filterDate = selectedDate || getTodayDateOnlyString();
+  const filteredTransactions = filterTransactionsByPeriod(expenses, filterPeriod, filterDate);
+
+  // 2. Financial Calculations now use filteredTransactions
+  const totalIncome = filteredTransactions.reduce((sum, expense) => {
     if (expense.category === "Income") {
       return sum + Math.abs(expense.amount);
     }
     return sum;
   }, 0);
 
-  const totalExpense = expenses.reduce((sum, expense) => {
+  const totalExpense = filteredTransactions.reduce((sum, expense) => {
     if (expense.category !== "Income") {
       return sum + Math.abs(expense.amount);
     }
@@ -229,7 +449,7 @@ function Dashboard({ user, setCurrentUser }) {
 
   const totalBalance = totalIncome - totalExpense;
 
-  const expenseByCategory = expenses.reduce((acc, exp) => {
+  const expenseByCategory = filteredTransactions.reduce((acc, exp) => {
     const cat = exp.category || "Other";
     if (cat !== "Income") {
       const currentAmount = acc[cat] ? acc[cat] : 0;
@@ -245,7 +465,8 @@ function Dashboard({ user, setCurrentUser }) {
   }));
   // --- End Financial Calculations ---
 
-  const sortedTransactions = [...expenses].sort((a, b) => 
+  // 3. Sorting uses filteredTransactions
+  const sortedTransactions = [...filteredTransactions].sort((a, b) => 
     new Date(b.date) - new Date(a.date) 
   );
   
@@ -272,7 +493,7 @@ function Dashboard({ user, setCurrentUser }) {
 
   return (
     <div style={{ padding: "2rem" }}>
-      {/* 1. Welcome + Logout Card */}
+      {/* 1. Welcome + Logout Card (Same) */}
       <div className="dashboard-card" style={{ position: "relative" }}>
         <h2>Welcome, {user.name}</h2>
         
@@ -292,10 +513,9 @@ function Dashboard({ user, setCurrentUser }) {
         >
           Logout <FontAwesomeIcon icon={faRightFromBracket} />
         </button>
-        {/* Removed generic "Add Transaction" button here, relying on the summary card actions */}
       </div>
 
-      {/* 2. COMBINED FINANCIAL SUMMARY & ACTIONS CARD (Full Width Row) */}
+      {/* 2. COMBINED FINANCIAL SUMMARY & ACTIONS CARD (Same) */}
       <div 
         className="dashboard-card" 
         style={{ 
@@ -384,7 +604,7 @@ function Dashboard({ user, setCurrentUser }) {
       </div>
       {/* END COMBINED FINANCIAL SUMMARY & ACTIONS CARD */}
 
-      {/* 3. Add Expense Form - Displayed under the Summary Card */}
+      {/* 3. Add Expense Form (Same) */}
       {showAddForm && (
         <div className="dashboard-card">
           <form onSubmit={handleAddExpense}>
@@ -433,14 +653,121 @@ function Dashboard({ user, setCurrentUser }) {
       )}
       {/* END Add Expense Form */}
 
-      {/* 4. PIE CHART CARD (Full Width Row) */}
+      {/* 4. Period Filter Card (Main filter) */}
+      <div className="dashboard-card">
+        {/* <h3 style={{marginBottom: '1rem'}}>Filter Period</h3> */}
+        <div style={{display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center'}}>
+          {FILTER_PERIODS.map(period => (
+            <button
+              key={period}
+              onClick={() => { setFilterPeriod(period); setStartIndex(0); setSelectedDate(getTodayDateOnlyString()); }}
+              style={{
+                padding: '0.75rem 1rem',
+                backgroundColor: filterPeriod === period ? '#4eacff' : '#f0f0f0',
+                color: filterPeriod === period ? 'white' : '#333',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                flexGrow: 1,
+                minWidth: '100px',
+                transition: 'background-color 0.2s'
+              }}
+            >
+              {period}
+            </button>
+          ))}
+        </div>
+        
+        {/* 🌟 DYNAMIC PERIOD SELECTION VIEW 🌟 */}
+        {filterPeriod !== 'ALL TIME' && (
+            <div style={{marginTop: '1.5rem', textAlign: 'center', borderTop: '1px solid #eee', paddingTop: '1rem'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                    
+                    {/* Selectors for Monthly/Yearly */}
+                    {filterPeriod === 'MONTHLY' || filterPeriod === 'YEARLY' ? (
+                        // Multi-Dropdown View
+                        <div style={{display: 'flex', gap: '10px', flexGrow: 1, justifyContent: 'center'}}>
+                            {/* Month Dropdown (Only for Monthly filter) */}
+                            {filterPeriod === 'MONTHLY' && (
+                                <select
+                                    value={selectedDate.substring(5, 7)} // MM part of YYYY-MM-DD
+                                    onChange={(e) => handleDropdownDateChange('MONTH', e.target.value)}
+                                    style={{padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc'}}
+                                >
+                                    {FIXED_MONTHS.map(month => (
+                                        <option key={month.value} value={month.value}>
+                                            {month.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+
+                            {/* Year Dropdown (For Monthly and Yearly filters) */}
+                            <select
+                                value={selectedDate.substring(0, 4)} // YYYY part of YYYY-MM-DD
+                                onChange={(e) => handleDropdownDateChange('YEAR', e.target.value)}
+                                style={{padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc'}}
+                            >
+                                {FIXED_YEARS.map(year => (
+                                    <option key={year} value={year}>
+                                        {year}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : (
+                        // Daily/Weekly Navigation
+                        <>
+                            {/* Previous Button (for Daily/Weekly) */}
+                            <button 
+                                onClick={() => handleTimeBlockChange('PREV')}
+                                className="arrow-button"
+                                // Inline style adjustments (optional, but keep for size/flexibility)
+                                style={{ minWidth: '40px', height: '40px' }} 
+                            >
+                                <FontAwesomeIcon icon={faChevronLeft} />
+                            </button>
+
+                            {/* Date Picker Input */}
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => { setSelectedDate(e.target.value); setStartIndex(0); }}
+                                style={{padding: '0.5rem', borderRadius: '8px', border: '1px solid #ccc', width: '150px'}}
+                            />
+                            
+                            {/* Next Button (for Daily/Weekly) */}
+                            <button 
+                                onClick={() => handleTimeBlockChange('NEXT')}
+                                className="arrow-button"
+                                // Inline style adjustments (optional, but keep for size/flexibility)
+                                style={{ minWidth: '40px', height: '40px' }} 
+                            >
+                                <FontAwesomeIcon icon={faChevronRight} />
+                            </button>
+                        </>
+                    )}
+                </div>
+                
+                {/* Information text for context */}
+                <p style={{fontSize: '0.9rem', color: '#666', marginTop: '10px'}}>
+                    Current View: <span style={{fontWeight: 600}}>{getDisplayTime()}</span>
+                </p>
+            </div>
+        )}
+        {/* 🌟 END DYNAMIC PERIOD SELECTION VIEW 🌟 */}
+      </div>
+      {/* END Period Filter Card */}
+
+      {/* 5. PIE CHART CARD (Full Width Row) */}
       <div 
         className="dashboard-card"
         style={{ 
           margin: '1.5rem auto'
         }}
       >
-        <h3>Expense Breakdown</h3>
+        <h3>Expense Breakdown ({filterPeriod !== 'ALL TIME' ? getDisplayTime() : 'All Time'})</h3>
         {totalExpense === 0 ? (
           <p>Add expenses to see the breakdown chart.</p>
         ) : (
@@ -482,9 +809,9 @@ function Dashboard({ user, setCurrentUser }) {
 
       {/* TRANSACTION HISTORY (Same) */}
       <div className="dashboard-card">
-        <h3>Transaction History</h3>
+        <h3>Transaction History ({filterPeriod !== 'ALL TIME' ? getDisplayTime() : 'All Time'})</h3>
         {sortedTransactions.length === 0 ? (
-          <p>No transactions yet.</p>
+          <p>No transactions found for the selected period.</p>
         ) : (
           <>
             <ul style={{ listStyle: "none", padding: 0 }}>

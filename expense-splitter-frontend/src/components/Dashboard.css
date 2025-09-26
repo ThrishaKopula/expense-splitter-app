@@ -61,3 +61,25 @@
   background-position: right 0.75rem center;
   background-size: 1.25rem;
 }
+
+.arrow-button {
+  padding: 0.5rem;
+  border: none;
+  background-color: #f0f0f0; /* Default background color */
+  color: #333; /* Default text color */
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s; /* Smooth transition */
+}
+
+/* Define the hover effect */
+.arrow-button:hover:not(:disabled) {
+  background-color: #4eacff; /* Blue background on hover */
+  color: white; /* White text on hover */
+}
+
+/* Ensure disabled buttons are visually dimmed */
+.arrow-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
