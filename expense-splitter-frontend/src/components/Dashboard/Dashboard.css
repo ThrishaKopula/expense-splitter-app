@@ -207,11 +207,11 @@
 
 /* Specific colors for each button */
 .summary-button.income {
-  background-color: #319b00; /* Green */
+  background-color: #06d6a0; /* Green */
 }
 
 .summary-button.income:hover:not(:disabled) {
-  background-color: #277b00; /* Green */
+  background-color: #05b183; /* Green */
 }
 
 .summary-button.expense {
