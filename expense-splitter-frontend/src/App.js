@@ -30,10 +30,10 @@ function App() {
           path="/login"
           element={<Login setCurrentUser={setCurrentUser} />}
         />
-        <Route
+        {/* <Route
           path="/signup"
           element={<Signup setCurrentUser={setCurrentUser} />}
-        />
+        /> */}
         <Route
           path="/"
           element={<Navigate to="/login" replace />}
@@ -43,6 +43,8 @@ function App() {
         <Route
           path="/dashboard"
           element={
+            // <Dashboard user={currentUser} setCurrentUser={setCurrentUser}/>
+            //
             <ProtectedRoute user={currentUser}>
               <Dashboard user={currentUser} setCurrentUser={setCurrentUser}/>
             </ProtectedRoute>

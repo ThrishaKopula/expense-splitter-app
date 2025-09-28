@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { getExpenses, createExpense, deleteExpense, updateExpense } from "../../api/api"; // <-- Adjust path if needed
-
 // Import new components
 import WelcomeCard from "./WelcomeCard";
 import SummaryCard from "./SummaryCard";
@@ -18,7 +17,7 @@ import { EXPENSE_CATEGORIES, ITEMS_PER_PAGE } from './constants';
 import { getTodayDateOnlyString, filterTransactionsByPeriod } from './utils';
 import "./Dashboard.css"; // Correct path to CSS file
 
-function Dashboard({ user, setCurrentUser }) {
+function Dashboard({user, setCurrentUser }) {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
@@ -30,7 +29,8 @@ function Dashboard({ user, setCurrentUser }) {
     const [categoryFilter, setCategoryFilter] = useState('ALL');
     const [filterPeriod, setFilterPeriod] = useState('MONTHLY');
     const [selectedDate, setSelectedDate] = useState(getTodayDateOnlyString());
-
+    const [category, setCategory] = useState(EXPENSE_CATEGORIES.find(cat => cat === 'Other') || 'Other');
+    
     // Data Fetching
     const { data: expenses = [], isLoading } = useQuery({
         queryKey: ["expenses", user?.id],
@@ -68,17 +68,39 @@ function Dashboard({ user, setCurrentUser }) {
 
     // Event Handlers
     const onLogout = () => {
-        setCurrentUser(null);
-        localStorage.removeItem("currentUser");
-        navigate("/login");
+        window.location.href = "http://localhost:8080/api/logout";
     };
 
     const handleToggleAddForm = (filter = 'ALL') => {
+        // 1. If we are opening the form:
         if (!showAddForm) {
             setCategoryFilter(filter);
+            
+            // Ensure the transaction date/time is current
+            // (You may need to define this state setter in the parent if it's not present)
+            // setTransactionDateTime(getCurrentDateTimeString()); 
+            
+            // Determine the specific initial category based on the action
+            if (filter === 'INCOME') {
+                // Set the state to the specific 'Income' category
+                setCategory('Income');
+            } else if (filter === 'EXPENSE') {
+                // Find the first non-Income category, defaulting to 'Housing' or 'Food'
+                const defaultExpenseCat = EXPENSE_CATEGORIES.find(cat => cat !== 'Income') || 'Other';
+                setCategory(defaultExpenseCat);
+            } else {
+                // Default to the general expense category
+                setCategory(EXPENSE_CATEGORIES.find(cat => cat === 'Other') || 'Other');
+            }
+
         } else {
+            // 2. If we are closing/canceling the form:
             setCategoryFilter('ALL');
+            // Reset the category state back to a neutral default
+            setCategory(EXPENSE_CATEGORIES.find(cat => cat === 'Other') || 'Other');
         }
+
+        // 3. Toggle the form visibility last
         setShowAddForm(!showAddForm);
     };
     
@@ -187,60 +209,63 @@ function Dashboard({ user, setCurrentUser }) {
 
     return (
         <div style={{ padding: "2rem" }}>
-            <WelcomeCard user={user} onLogout={onLogout} />
-
-            <SummaryCard
-                totalBalance={totalBalance}
-                totalIncome={totalIncome}
-                totalExpense={totalExpense}
-                onToggleAddForm={handleToggleAddForm}
-            />
-
-            {showAddForm && (
-                <AddTransactionForm
-                    onAddExpense={handleAddExpense}
+            <div>
+                <WelcomeCard user={user} onLogout={onLogout}/>
+                <SummaryCard
+                    totalBalance={totalBalance}
+                    totalIncome={totalIncome}
+                    totalExpense={totalExpense}
                     onToggleAddForm={handleToggleAddForm}
-                    getFilteredCategories={getFilteredCategories}
-                    addMutation={addMutation}
                 />
-            )}
 
-            <FilterControls
-                filterPeriod={filterPeriod}
-                selectedDate={selectedDate}
-                onFilterPeriodChange={handleFilterPeriodChange}
-                onDateChange={handleDateChange}
-                onTimeBlockChange={handleTimeBlockChange}
-                onDropdownDateChange={handleDropdownDateChange}
-            />
+                {showAddForm && (
+                    <AddTransactionForm
+                        initialCategory={category} 
+                        onAddExpense={handleAddExpense}
+                        onToggleAddForm={handleToggleAddForm}
+                        getFilteredCategories={getFilteredCategories}
+                        addMutation={addMutation}
+                    />
+                )}
 
-            <ChartCard
-                pieChartData={pieChartData}
-                totalExpense={totalExpense}
-                filterPeriod={filterPeriod}
-                selectedDate={selectedDate}
-            />
+                <FilterControls
+                    filterPeriod={filterPeriod}
+                    selectedDate={selectedDate}
+                    onFilterPeriodChange={handleFilterPeriodChange}
+                    onDateChange={handleDateChange}
+                    onTimeBlockChange={handleTimeBlockChange}
+                    onDropdownDateChange={handleDropdownDateChange}
+                />
 
-            <TransactionList
-                transactions={sortedTransactions}
-                filterPeriod={filterPeriod}
-                selectedDate={selectedDate}
-                onStartEdit={handleStartEdit}
-                onDelete={(id) => deleteMutation.mutate(id)}
-                onPrev={() => setStartIndex(Math.max(0, startIndex - ITEMS_PER_PAGE))}
-                onNext={() => setStartIndex(startIndex + ITEMS_PER_PAGE)}
-                startIndex={startIndex}
-                deleteMutation={deleteMutation}
-                updateMutation={updateMutation}
-            />
+                <ChartCard
+                    pieChartData={pieChartData}
+                    totalExpense={totalExpense}
+                    filterPeriod={filterPeriod}
+                    selectedDate={selectedDate}
+                />
 
-            <EditModal
-                isOpen={isModalOpen}
-                editingExpense={editingExpense}
-                onUpdate={handleUpdateExpense}
-                onClose={handleCloseModal}
-                updateMutation={updateMutation}
-            />
+                <TransactionList
+                    transactions={sortedTransactions}
+                    filterPeriod={filterPeriod}
+                    selectedDate={selectedDate}
+                    onStartEdit={handleStartEdit}
+                    onDelete={(id) => deleteMutation.mutate(id)}
+                    onPrev={() => setStartIndex(Math.max(0, startIndex - ITEMS_PER_PAGE))}
+                    onNext={() => setStartIndex(startIndex + ITEMS_PER_PAGE)}
+                    startIndex={startIndex}
+                    deleteMutation={deleteMutation}
+                    updateMutation={updateMutation}
+                />
+
+                <EditModal
+                    isOpen={isModalOpen}
+                    editingExpense={editingExpense}
+                    onUpdate={handleUpdateExpense}
+                    onClose={handleCloseModal}
+                    updateMutation={updateMutation}
+                />
+                </div>
+            
         </div>
     );
 }

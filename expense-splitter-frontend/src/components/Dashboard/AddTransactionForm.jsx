@@ -4,10 +4,10 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBan } from '@fortawesome/free-solid-svg-icons';
 import { getCurrentDateTimeString } from './utils';
 
-function AddTransactionForm({ onAddExpense, onToggleAddForm, getFilteredCategories, addMutation }) {
+function AddTransactionForm({ initialCategory, onAddExpense, onToggleAddForm, getFilteredCategories, addMutation }) {
     const [description, setDescription] = useState("");
     const [amount, setAmount] = useState("");
-    const [category, setCategory] = useState("Other");
+    const [category, setCategory] = useState(initialCategory);
     const [transactionDateTime, setTransactionDateTime] = useState(getCurrentDateTimeString());
 
     const handleSubmit = (e) => {
