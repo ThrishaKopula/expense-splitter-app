@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL Database Service
+  postgres:
+    image: postgres:16
+    container_name: expense-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: expense_user
+      POSTGRES_PASSWORD: expense_pass
+      POSTGRES_DB: expense_db
+    volumes:
+      # Persists data to a volume on your host machine
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      # Exposes database port for local tools (e.g., pgAdmin)
+      - "5432:5432"
+
+  # 2. Spring Boot Backend Service (Java 21 / Maven)
+  backend:
+    container_name: expense-splitter
+    build:
+      # FIX 1: Set context to the root directory (where the single Dockerfile resides)
+      context: .
+      dockerfile: Dockerfile
+      # Uses the 'backend-runner' stage in the single root Dockerfile
+      target: backend-runner 
+    restart: always
+    # Ensures the database is running before the backend tries to connect
+    depends_on:
+      - postgres
+    environment:
+      # CRITICAL: Uses the Docker service name 'postgres' as the host
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/expense_db
+      SPRING_DATASOURCE_USERNAME: expense_user
+      SPRING_DATASOURCE_PASSWORD: expense_pass
+      PORT: 8080 # Spring Boot listens on this port inside the container
+    ports:
+      - "8080:8080" # Maps host port 8080 to container port 8080
+
+  # 3. React Frontend Service (Served by Nginx)
+  frontend:
+    container_name: expense-splitter-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend-runner
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://backend:8080/api
+    volumes:
+      # Mount your local code into the container (for live reload)
+      - ./expense-splitter-frontend:/app/frontend
+      # Prevent overwriting node_modules in container with empty host folder
+      - /app/frontend/node_modules
+
+
+
+# Define the volume for persistent database storage
+volumes:
+  postgres_data:

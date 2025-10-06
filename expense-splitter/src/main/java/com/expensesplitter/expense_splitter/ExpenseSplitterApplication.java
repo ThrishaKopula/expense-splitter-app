@@ -20,7 +20,6 @@ public class ExpenseSplitterApplication {
 		SpringApplication.run(ExpenseSplitterApplication.class, args);
 	}
 
-	// ✅ Seed demo data at startup
 	@Bean
 	CommandLineRunner initializeData(UserRepository userRepository, ExpenseRepository expenseRepository) {
 		LocalDateTime today = LocalDateTime.now();
