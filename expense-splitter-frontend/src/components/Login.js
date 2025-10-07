@@ -68,7 +68,7 @@ function Login({ setCurrentUser }) {
   return (
     <div className="centered-page">
       <div className="auth-card">
-        <h2>Login</h2>
+        <h2>Welcome to PocketUp!</h2>
         {error && <p style={{ color: "red" }}>{error}</p>}
         <form>
           {/* <input

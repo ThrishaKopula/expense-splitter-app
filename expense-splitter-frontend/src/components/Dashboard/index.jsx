@@ -27,7 +27,7 @@ function Dashboard({user, setCurrentUser }) {
     const [editingExpense, setEditingExpense] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [categoryFilter, setCategoryFilter] = useState('ALL');
-    const [filterPeriod, setFilterPeriod] = useState('MONTHLY');
+    const [filterPeriod, setFilterPeriod] = useState('ALL TIME');
     const [selectedDate, setSelectedDate] = useState(getTodayDateOnlyString());
     const [category, setCategory] = useState(EXPENSE_CATEGORIES.find(cat => cat === 'Other') || 'Other');
     
@@ -181,11 +181,18 @@ function Dashboard({user, setCurrentUser }) {
         return EXPENSE_CATEGORIES;
     };
     
+    // Transactions FILTERED by Period/Date (Used for Chart, List, Filtered Income/Expense)
     const filteredTransactions = filterTransactionsByPeriod(expenses, filterPeriod, selectedDate);
     
+    // 🌟 1. ALL TIME CALCULATIONS (Stable Header Values) 🌟
+    const allTimeIncome = expenses.reduce((sum, exp) => exp.category === "Income" ? sum + Math.abs(exp.amount) : sum, 0);
+    const allTimeExpense = expenses.reduce((sum, exp) => exp.category !== "Income" ? sum + Math.abs(exp.amount) : sum, 0);
+    const allTimeBalance = allTimeIncome - allTimeExpense;
+    // ----------------------------------------------------
+
+    // Filtered Income/Expense (Used for the Chart, which still needs filtered data)
     const totalIncome = filteredTransactions.reduce((sum, exp) => exp.category === "Income" ? sum + Math.abs(exp.amount) : sum, 0);
     const totalExpense = filteredTransactions.reduce((sum, exp) => exp.category !== "Income" ? sum + Math.abs(exp.amount) : sum, 0);
-    const totalBalance = totalIncome - totalExpense;
 
     const expenseByCategory = filteredTransactions.reduce((acc, exp) => {
         if (exp.category !== "Income") {
@@ -212,9 +219,9 @@ function Dashboard({user, setCurrentUser }) {
             <div>
                 <WelcomeCard user={user} onLogout={onLogout}/>
                 <SummaryCard
-                    totalBalance={totalBalance}
-                    totalIncome={totalIncome}
-                    totalExpense={totalExpense}
+                    totalBalance={allTimeBalance}
+                    totalIncome={allTimeIncome}
+                    totalExpense={allTimeExpense}
                     onToggleAddForm={handleToggleAddForm}
                 />
 
